@@ -94,18 +94,23 @@ jobs:
           sudo tar -xzf cf-cli.tgz -C /usr/local/bin
           cf --version
 
+      # Debug: Show CF API info to verify identity providers
+      - name: Debug — CF API info
+        run: |
+          curl -s "$CF_API_ENDPOINT" | python3 -m json.tool || true
+          echo "---"
+          curl -s "$(echo $CF_API_ENDPOINT | sed 's|api.cf|login.cf|')/info" | python3 -m json.tool || true
+
       # Log in to Cloud Foundry using secrets.
-      # We pass CF_PASSWORD as an environment variable instead of inline
-      # with -p flag, because special characters in the password ($, !, etc.)
-      # can break when interpreted by the shell.
-      # CF CLI reads CF_PASSWORD env var automatically when present.
-      # --origin sap.ids is required for SAP BTP trial (SAP Universal ID).
+      # CF_PASSWORD is set as step-level env var to prevent shell
+      # interpretation of special characters.
+      # We try without --origin first (uses default IDP).
       - name: Log in to Cloud Foundry
         env:
           CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
         run: |
           cf api "$CF_API_ENDPOINT"
-          cf auth "${{ secrets.CF_USERNAME }}" "$CF_PASSWORD" --origin sap.ids
+          cf auth "${{ secrets.CF_USERNAME }}" "$CF_PASSWORD"
           cf target -o "$CF_ORG" -s "$CF_SPACE"
 
       # Deploy the application using the manifest.yml.
