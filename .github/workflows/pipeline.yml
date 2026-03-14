@@ -4,20 +4,25 @@
 # This is the unified pipeline for build, infrastructure, and deployment.
 #
 # How it works:
-#   - On EVERY push/PR:    Matrix build runs (Java 17 + 21)
+#   - On EVERY push/PR:    Matrix build runs (Java 21 + 25)
 #   - On PRs to main:      + Terraform plan (posted as PR comment)
 #   - On merge to main:    + Build-for-deploy (uploads JAR)
 #                          + Terraform apply + deploy to CF
 #
 # Key concepts demonstrated (Phase 5 + Phase 6):
 #   - Reusable workflows (`workflow_call`) — build logic in reusable-build.yml
-#   - Matrix strategy — test across Java 17 and 21 in parallel
+#   - Matrix strategy — test across Java 21 and 25 in parallel
 #   - Multi-job workflows with `needs:` dependencies
 #   - Conditional execution with `if:` expressions
 #   - Artifact passing between jobs (JAR file)
 #   - Terraform state stored on a dedicated git branch
 #   - Posting Terraform plan output as a PR comment
 #   - GitHub Environments for deployment protection
+#
+# Phase 7 changes:
+#   - Spring Boot 3.4.3 → 4.0.3, Java 17 → 21 (compile target)
+#   - CI matrix: [17, 21] → [21, 25] (21 is LTS + CF runtime, 25 tests forward compat)
+#   - setup-java action: v4 → v5
 # =====================================================================
 
 name: CI/CD Pipeline
@@ -51,29 +56,34 @@ env:
 jobs:
 
   # =================================================================
-  # JOB 1: MATRIX BUILD (Java 17 + 21)
+  # JOB 1: MATRIX BUILD (Java 21 + 25)
   # =================================================================
   # Calls the reusable build workflow for EACH Java version in the matrix.
-  # This spawns 2 parallel jobs: one for Java 17, one for Java 21.
+  # This spawns 2 parallel jobs: one for Java 21, one for Java 25.
   # Purpose: verify the code compiles and tests pass on multiple versions.
   #
   # Matrix strategy:
   #   strategy.matrix defines a list of values. GitHub Actions creates
-  #   one job instance per combination. With [17, 21], we get 2 jobs.
-  #   If we had [17, 21] x [ubuntu, windows], we'd get 4 jobs.
+  #   one job instance per combination. With [21, 25], we get 2 jobs.
+  #   If we had [21, 25] x [ubuntu, windows], we'd get 4 jobs.
   #
-  #   fail-fast: false means if Java 17 fails, Java 21 still runs.
+  #   fail-fast: false means if Java 21 fails, Java 25 still runs.
   #   (Default is true — one failure cancels all other matrix jobs.)
+  #
+  # Why 21 + 25?
+  #   - 21: LTS, matches CF runtime (SAP BTP buildpack max is 21)
+  #   - 25: Latest LTS (Sep 2025), tests forward compatibility
+  #   Previously was [17, 21] — updated in Phase 7 for Boot 4.0.3.
   # =================================================================
   build-matrix:
     name: Build (Java ${{ matrix.java-version }})
     strategy:
       fail-fast: false
       matrix:
-        java-version: ['17', '21']
+        java-version: ['21', '25']
 
     # `uses:` calls the reusable workflow instead of defining steps inline.
-    # This is like calling a function: reusable-build(java-version='17')
+    # This is like calling a function: reusable-build(java-version='21')
     uses: ./.github/workflows/reusable-build.yml
     with:
       java-version: ${{ matrix.java-version }}
@@ -86,7 +96,10 @@ jobs:
   # Only runs on push to main — no point uploading artifacts for PRs
   # or feature branches since we don't deploy from those.
   #
-  # Why a separate job? The matrix build (Job 1) runs Java 17 + 21
+  # Why Java 21 specifically? SAP BTP CF's Java buildpack only supports
+  # up to JRE 21. We compile with 21 and run on 21 — no mismatch.
+  #
+  # Why a separate job? The matrix build (Job 1) runs Java 21 + 25
   # for testing, but we can't selectively upload artifacts from one
   # matrix entry. So we have a dedicated "build for deployment" job.
   # =================================================================

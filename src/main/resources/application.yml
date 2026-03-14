@@ -1,10 +1,99 @@
+# =============================================================================
+# Application Configuration
+# =============================================================================
+# This file configures all Spring Boot modules. YAML format uses indentation
+# to represent hierarchy: spring.datasource.url = spring: datasource: url:
+#
+# Key concept: Spring Boot auto-configuration reads these properties and
+# automatically sets up beans (database connections, JPA, etc.) for you.
+# Without this file, you'd need to write Java @Configuration classes manually.
+# =============================================================================
+
 spring:
   application:
     name: github-action-demo
 
+  # ---------------------------------------------------------------------------
+  # DATASOURCE — Database connection settings
+  # ---------------------------------------------------------------------------
+  # H2 is an in-memory database that runs inside your JVM — no installation.
+  # Perfect for development: starts fast, auto-creates tables, resets on restart.
+  #
+  # jdbc:h2:mem:taskdb — "mem" means in-memory (RAM only, no files on disk).
+  #   The name "taskdb" is arbitrary — it's the database name within H2.
+  #
+  # DB_CLOSE_DELAY=-1 — keeps the database alive as long as the JVM runs.
+  #   Without this, H2 drops the database when the last connection closes.
+  #
+  # DB_CLOSE_ON_EXIT=FALSE — prevents H2 from closing when JVM shuts down
+  #   (Spring manages the lifecycle instead).
+  # ---------------------------------------------------------------------------
+  datasource:
+    url: jdbc:h2:mem:taskdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  # ---------------------------------------------------------------------------
+  # JPA (Java Persistence API) + Hibernate settings
+  # ---------------------------------------------------------------------------
+  # JPA is a specification (interface). Hibernate is the implementation (engine).
+  # Spring Data JPA sits on top and provides the Repository abstraction.
+  #
+  # Stack: Your Code → Spring Data JPA → JPA (spec) → Hibernate → JDBC → H2
+  #
+  # ddl-auto: create-drop
+  #   - "create-drop" = create tables on startup, drop them on shutdown.
+  #   - Other options: "none" (production), "update" (add columns, never drop),
+  #     "validate" (check schema matches entities, fail if not).
+  #   - For development, create-drop is perfect — always fresh tables.
+  #
+  # show-sql: true — prints every SQL statement to the console.
+  #   Invaluable for learning! You'll see exactly what Hibernate generates.
+  #
+  # open-in-view: false — disables OSIV (Open Session In View) pattern.
+  #   OSIV keeps the Hibernate session open during HTTP response rendering,
+  #   which can cause lazy-loading N+1 problems silently. Best practice
+  #   is to disable it and handle all data loading in the service layer.
+  # ---------------------------------------------------------------------------
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  # ---------------------------------------------------------------------------
+  # H2 Console — Browser-based database viewer
+  # ---------------------------------------------------------------------------
+  # Accessible at: http://localhost:8080/h2-console
+  # JDBC URL: jdbc:h2:mem:taskdb (must match datasource.url above)
+  # Username: sa, Password: (empty)
+  #
+  # This lets you browse tables, run SQL queries, and inspect data.
+  # Only enabled for development — disable in production!
+  # ---------------------------------------------------------------------------
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+# =============================================================================
+# SERVER
+# =============================================================================
 server:
   port: 8080
 
+# =============================================================================
+# ACTUATOR — Application monitoring endpoints
+# =============================================================================
+# Actuator exposes operational info about your running app.
+# /actuator/health — is the app up? (used by CF for health checks)
+# /actuator/info   — app metadata
+# show-details: always — shows full health info (disk, db, etc.)
+# =============================================================================
 management:
   endpoints:
     web:
@@ -13,3 +102,26 @@ management:
   endpoint:
     health:
       show-details: always
+
+# =============================================================================
+# SPRINGDOC OPENAPI — API documentation settings
+# =============================================================================
+# springdoc scans your @RestController classes and auto-generates an OpenAPI
+# spec (machine-readable JSON) + Swagger UI (human-friendly web page).
+#
+# Endpoints created automatically:
+#   /v3/api-docs     — OpenAPI 3.0 spec in JSON format
+#   /swagger-ui.html — Swagger UI (interactive API explorer)
+#
+# api-docs.path — customizes the JSON spec URL (default: /v3/api-docs)
+# swagger-ui.path — customizes the Swagger UI URL (default: /swagger-ui.html)
+#
+# The info below populates the header of the Swagger UI page.
+# =============================================================================
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
