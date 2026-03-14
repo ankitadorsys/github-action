@@ -95,19 +95,18 @@ jobs:
           cf --version
 
       # Log in to Cloud Foundry using secrets.
-      # `cf login` authenticates and targets the correct org/space.
-      # The password comes from GitHub Secrets — it's masked in logs.
-      # --origin sap.ids is required for SAP BTP trial accounts that
-      # use SAP Universal ID as the identity provider.
+      # We pass CF_PASSWORD as an environment variable instead of inline
+      # with -p flag, because special characters in the password ($, !, etc.)
+      # can break when interpreted by the shell.
+      # CF CLI reads CF_PASSWORD env var automatically when present.
+      # --origin sap.ids is required for SAP BTP trial (SAP Universal ID).
       - name: Log in to Cloud Foundry
+        env:
+          CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
         run: |
-          cf login \
-            -a "$CF_API_ENDPOINT" \
-            -u "${{ secrets.CF_USERNAME }}" \
-            -p "${{ secrets.CF_PASSWORD }}" \
-            -o "$CF_ORG" \
-            -s "$CF_SPACE" \
-            --origin sap.ids
+          cf api "$CF_API_ENDPOINT"
+          cf auth "${{ secrets.CF_USERNAME }}" "$CF_PASSWORD" --origin sap.ids
+          cf target -o "$CF_ORG" -s "$CF_SPACE"
 
       # Deploy the application using the manifest.yml.
       # `cf push` reads manifest.yml, uploads the JAR, and starts the app.
