@@ -37,7 +37,7 @@ Thumbs.db
 # Terraform
 terraform/.terraform/
 terraform/*.tfstate
-terraform/*.tfstate.backup
+terraform/*.tfstate.*
 terraform/.terraform.lock.hcl
 terraform/terraform.tfvars
 
