@@ -14,8 +14,9 @@
 4. [Phase 3: Manual CF Deploy](#phase-3-manual-cf-deploy)
 5. [Phase 4: Terraform CF Infrastructure](#phase-4-terraform-cf-infrastructure)
 6. [Phase 5: Full CI/CD Pipeline](#phase-5-full-cicd-pipeline)
-7. [How Everything Connects](#how-everything-connects)
-8. [Git Branch History](#git-branch-history)
+7. [Phase 6: Advanced Workflows](#phase-6-advanced-workflows)
+8. [How Everything Connects](#how-everything-connects)
+9. [Git Branch History](#git-branch-history)
 
 ---
 
@@ -948,6 +949,351 @@ Note: `ci.yml` and `deploy.yml` still exist and work. They're not deleted
 
 ---
 
+## Phase 6: Advanced Workflows
+
+**Branch:** `feature/06-advanced-workflows`
+**Goal:** Reduce duplication, test across Java versions, and polish the project.
+
+### What We Changed
+
+Phase 5 gave us a working pipeline. Phase 6 makes it better:
+
+```
+BEFORE (Phase 5):                         AFTER (Phase 6):
+
+.github/workflows/                        .github/workflows/
+├── ci.yml           (Phase 2 — duplicate) ├── reusable-build.yml  (NEW — shared logic)
+├── deploy.yml       (Phase 3 — unused)    └── pipeline.yml        (REFACTORED)
+└── pipeline.yml     (Phase 5 — inline)
+
+Problems:                                 Solved:
+- Build logic duplicated in               - Build logic in ONE place
+  ci.yml AND pipeline.yml                   (reusable-build.yml)
+- Only tested Java 21                     - Matrix tests Java 17 + 21
+- ci.yml fires on every push              - Old workflows deleted
+  (redundant with pipeline.yml)           - Status badge on README
+- No README badge
+```
+
+### Concept 1: Reusable Workflows (`workflow_call`)
+
+A reusable workflow is like a **function** in programming:
+
+```
+NORMAL workflow:                    REUSABLE workflow:
+  trigger: push, pull_request         trigger: workflow_call
+  (runs on events)                    (runs when CALLED by another workflow)
+
+  Cannot accept parameters            Accepts inputs (like function args)
+  Standalone                           Must be called by another workflow
+```
+
+**The analogy:**
+
+```python
+# Regular workflow = a script that runs on its own
+# ci.yml: "When code is pushed, build and test"
+
+# Reusable workflow = a function you call
+# reusable-build.yml:
+def build(java_version='21', upload_artifact=False):
+    checkout()
+    setup_java(java_version)
+    mvn_verify()
+    if upload_artifact:
+        upload_jar()
+
+# pipeline.yml calls it:
+build(java_version='17')   # Test with Java 17
+build(java_version='21')   # Test with Java 21
+build(java_version='21', upload_artifact=True)  # Build for deploy
+```
+
+#### `reusable-build.yml` — The Reusable Workflow
+
+```yaml
+on:
+  workflow_call:          # <-- "I'm callable, not standalone"
+    inputs:               # <-- Function parameters
+      java-version:
+        type: string
+        default: '21'
+      upload-artifact:
+        type: boolean
+        default: false
+    outputs:              # <-- Return values
+      jar-name:
+        value: ${{ jobs.build.outputs.jar-name }}
+```
+
+**Key parts:**
+
+```
+workflow_call
+├── inputs (what the caller passes IN)
+│   ├── java-version: string, default '21'
+│   └── upload-artifact: boolean, default false
+│
+├── outputs (what the caller gets BACK)
+│   └── jar-name: the name of the built JAR file
+│
+└── jobs
+    └── build
+        ├── uses inputs via: ${{ inputs.java-version }}
+        ├── conditional step: if: inputs.upload-artifact
+        └── sets outputs via: >> "$GITHUB_OUTPUT"
+```
+
+**How does `GITHUB_OUTPUT` work?**
+
+Steps communicate through a special file. When a step writes to `$GITHUB_OUTPUT`,
+subsequent steps (or the calling workflow) can read that value:
+
+```bash
+# In a step with id: set-jar-name
+echo "jar-name=my-app.jar" >> "$GITHUB_OUTPUT"
+
+# In another step or the calling workflow
+${{ steps.set-jar-name.outputs.jar-name }}  # = "my-app.jar"
+```
+
+#### How `pipeline.yml` Calls the Reusable Workflow
+
+```yaml
+# In pipeline.yml:
+jobs:
+  build-matrix:
+    uses: ./.github/workflows/reusable-build.yml   # <-- Call the reusable workflow
+    with:                                            # <-- Pass inputs
+      java-version: ${{ matrix.java-version }}
+      upload-artifact: false
+```
+
+Compare to inline steps (Phase 5):
+```yaml
+# OLD — inline steps (duplicated logic):
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { java-version: '21' }
+      - run: mvn clean verify
+
+# NEW — calling reusable workflow (no duplication):
+jobs:
+  build-matrix:
+    uses: ./.github/workflows/reusable-build.yml
+    with: { java-version: '21' }
+```
+
+### Concept 2: Matrix Strategy
+
+Matrix strategy creates **multiple job instances** from one definition:
+
+```yaml
+strategy:
+  fail-fast: false          # Don't cancel others if one fails
+  matrix:
+    java-version: ['17', '21']
+```
+
+**What GitHub Actions does with this:**
+
+```
+Your YAML defines 1 job          GitHub creates 2 jobs
+┌─────────────────────────┐      ┌─────────────────────────┐
+│ build-matrix             │      │ Build (Java 17)         │
+│   matrix:                │      │   java-version = '17'   │
+│     java-version:        │ ---> │   runs in parallel      │
+│       - '17'             │      └─────────────────────────┘
+│       - '21'             │      ┌─────────────────────────┐
+│                          │      │ Build (Java 21)         │
+│                          │      │   java-version = '21'   │
+└─────────────────────────┘      │   runs in parallel      │
+                                  └─────────────────────────┘
+```
+
+**`fail-fast: false`** — Why do we set this?
+
+```
+fail-fast: true (default)         fail-fast: false (what we use)
+
+Java 17: FAIL                     Java 17: FAIL
+Java 21: CANCELLED (never runs)   Java 21: STILL RUNS
+
+"One failure = stop everything"   "Run all, report all failures"
+
+Use true when:                    Use false when:
+  - Failures are likely related     - You want to see ALL results
+  - Save CI minutes                 - Failures may be version-specific
+```
+
+**Multi-dimensional matrix (for reference):**
+
+```yaml
+# We don't use this, but you could:
+matrix:
+  java-version: ['17', '21']
+  os: [ubuntu-latest, windows-latest]
+
+# Creates 4 jobs: 17+ubuntu, 17+windows, 21+ubuntu, 21+windows
+```
+
+### Concept 3: The New Pipeline Architecture
+
+```
+pipeline.yml (Phase 6 — after refactoring)
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ TRIGGER: push to main/feature/** OR pull_request to main            │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              v
+          ┌─────────────────────────────────────┐
+          │   Job 1: build-matrix               │
+          │   (ALWAYS runs)                     │
+          │                                     │
+          │   calls reusable-build.yml          │
+          │   with matrix: [Java 17, Java 21]   │
+          │                                     │
+          │   ┌──────────────┐ ┌──────────────┐ │
+          │   │ Java 17 build│ │ Java 21 build│ │
+          │   │  (parallel)  │ │  (parallel)  │ │
+          │   └──────────────┘ └──────────────┘ │
+          └──────────────┬──────────────────────┘
+                         │
+        ┌────────────────┼─────────────────┐
+        │                │                 │
+        v                │                 v
+┌───────────────┐        │     ┌───────────────────────┐
+│ Job 2: TF Plan│        │     │ Job 3: build-deploy   │
+│ (PRs only)    │        │     │ (main push only)      │
+│               │        │     │                       │
+│ Plan + PR     │        │     │ calls reusable-build  │
+│ comment       │        │     │ java=21, artifact=true│
+└───────────────┘        │     └───────────┬───────────┘
+                         │                 │
+                         │                 v
+                         │     ┌───────────────────────┐
+                         │     │ Job 4: deploy         │
+                         └────>│ (main push only)      │
+                               │                       │
+                               │ needs: [build-matrix, │
+                               │         build-deploy] │
+                               │                       │
+                               │ TF apply + verify     │
+                               └───────────────────────┘
+```
+
+**Why two separate build calls (`build-matrix` and `build-deploy`)?**
+
+```
+Problem:
+  Matrix creates Build(Java 17) and Build(Java 21) in parallel.
+  The deploy job needs the JAR from Java 21 only.
+  But you can't say "needs: build-matrix[java-version='21']" — 
+  GitHub Actions doesn't support depending on a specific matrix entry.
+
+Solution:
+  build-matrix:   Java 17 + 21, no artifact upload (just for testing)
+  build-deploy:   Java 21 only, uploads the JAR artifact
+  deploy:         needs BOTH (all tests pass + JAR is ready)
+```
+
+### Concept 4: Status Badges
+
+A status badge is a live image that shows the latest workflow status:
+
+```
+URL format:
+https://github.com/<owner>/<repo>/actions/workflows/<workflow-file>/badge.svg
+
+Our badge:
+https://github.com/ankitadorsys/github-action/actions/workflows/pipeline.yml/badge.svg
+```
+
+In `README.md`, it looks like:
+```markdown
+[![CI/CD Pipeline](https://github.com/ankitadorsys/github-action/actions/workflows/pipeline.yml/badge.svg)](https://github.com/ankitadorsys/github-action/actions/workflows/pipeline.yml)
+```
+
+**The syntax breakdown:**
+
+```
+[![ALT TEXT](IMAGE_URL)](LINK_URL)
+  │         │            │
+  │         │            └── Click goes to: Actions tab
+  │         └── Badge image from GitHub
+  └── Text shown if image fails to load
+```
+
+The badge auto-updates — green for passing, red for failing.
+
+### Concept 5: Reusable Workflows vs Composite Actions
+
+Both reduce duplication, but they work differently:
+
+```
+REUSABLE WORKFLOW                        COMPOSITE ACTION
+(.github/workflows/reusable-build.yml)   (action.yml in a directory or repo)
+
+- Reuses entire JOBS                     - Reuses STEPS within a job
+- Has its own runner                     - Runs on the CALLER's runner
+- Called with `uses:` at job level        - Called with `uses:` at step level
+- Can have multiple jobs                 - Single set of steps
+- Can have its own secrets               - Uses caller's context
+- Trigger: workflow_call                 - No trigger (it's a step)
+
+When to use:                             When to use:
+- Complex multi-step processes           - Small reusable steps
+- Need isolation (own runner)            - Shared setup logic
+- Cross-repo shared workflows            - Repo-specific helpers
+
+Example:                                 Example:
+  jobs:                                    steps:
+    build:                                   - uses: actions/checkout@v4
+      uses: ./.github/workflows/             - uses: ./.github/actions/setup
+             reusable-build.yml                       # composite action
+```
+
+**We chose reusable workflows** because our build process is a complete job
+with checkout, Java setup, Maven build, and artifact upload — a natural fit.
+
+### Concept 6: Cleaning Up Old Workflows
+
+We deleted `ci.yml` and `deploy.yml`:
+
+```
+BEFORE:                                  AFTER:
+3 workflow files, redundant triggers     2 workflow files, clean triggers
+
+ci.yml ──────> push/PR: build+test       (deleted — pipeline.yml does this)
+deploy.yml ──> manual: cf push           (deleted — pipeline.yml uses Terraform)
+pipeline.yml > push/PR: build+plan+deploy  pipeline.yml ──> everything
+                                           reusable-build.yml ──> shared logic
+```
+
+**Why delete instead of keeping them?**
+- `ci.yml` fired on the SAME triggers as `pipeline.yml` — every push
+  triggered TWO workflows doing the same build. Wasteful.
+- `deploy.yml` used `cf push` (imperative) — we replaced that with
+  Terraform (declarative) in Phase 4-5. No reason to keep the old way.
+
+### What We Learned in Phase 6
+
+- Reusable workflows (`workflow_call`) — define once, call many times
+- Inputs and outputs for reusable workflows (function parameters/return values)
+- Matrix strategy — test across multiple versions in parallel
+- `fail-fast: false` — don't cancel other matrix jobs on failure
+- Status badges — live build status in README
+- Composite actions vs reusable workflows — when to use which
+- Cleaning up redundant workflows to avoid duplicate runs
+- `GITHUB_OUTPUT` for passing data between steps
+
+---
+
 ## How Everything Connects
 
 ### The Complete Flow (from code change to running app)
@@ -960,15 +1306,16 @@ YOU                  GITHUB                    GITHUB ACTIONS              SAP B
  │────────────────────>│                           │                          │
  │                     │  trigger: push             │                          │
  │                     │──────────────────────────>│                          │
- │                     │                           │  Job 1: Build & Test     │
- │                     │                           │  (mvn clean verify)      │
+ │                     │                           │  Matrix Build:           │
+ │                     │                           │  ├── Java 17 (parallel)  │
+ │                     │                           │  └── Java 21 (parallel)  │
  │                     │                           │                          │
  │  Open PR            │                           │                          │
  │────────────────────>│                           │                          │
  │                     │  trigger: pull_request     │                          │
  │                     │──────────────────────────>│                          │
- │                     │                           │  Job 1: Build & Test     │
- │                     │                           │  Job 2: Terraform Plan   │
+ │                     │                           │  Matrix Build (17 + 21)  │
+ │                     │                           │  Terraform Plan          │
  │                     │     PR comment            │     │                    │
  │                     │<──────────────────────────│<────┘                    │
  │                     │  "No changes" or          │                          │
@@ -978,8 +1325,9 @@ YOU                  GITHUB                    GITHUB ACTIONS              SAP B
  │────────────────────>│                           │                          │
  │                     │  trigger: push (main)      │                          │
  │                     │──────────────────────────>│                          │
- │                     │                           │  Job 1: Build & Test     │
- │                     │                           │  Job 3: Deploy           │
+ │                     │                           │  Matrix Build (17 + 21)  │
+ │                     │                           │  Build for Deploy (21)   │
+ │                     │                           │  Deploy:                 │
  │                     │                           │    terraform apply ──────>│ Update app
  │                     │                           │    save state             │
  │                     │                           │    health check ─────────>│ 200 OK
@@ -1000,11 +1348,10 @@ github-action/
 │   ├── manifest.yml                # "How to deploy" — CF descriptor (legacy, Phase 3)
 │   └── src/                        # Java source + tests
 │
-├── CI/CD Workflows (Phase 2, 3, 5)
+├── CI/CD Workflows (Phase 2-6)
 │   └── .github/workflows/
-│       ├── ci.yml                  # Simple build+test (Phase 2, still works)
-│       ├── deploy.yml              # Manual deploy button (Phase 3, still works)
-│       └── pipeline.yml            # Full pipeline (Phase 5, THE main workflow)
+│       ├── pipeline.yml            # Full pipeline (Phase 5+6, THE main workflow)
+│       └── reusable-build.yml      # Reusable build (Phase 6, called by pipeline)
 │
 ├── Infrastructure as Code (Phase 4)
 │   └── terraform/
@@ -1032,21 +1379,21 @@ Every phase was built on a feature branch, then merged to `main`.
 Branches are kept (not deleted) so you can review each phase's changes.
 
 ```
-main  ─────*───────*──────*──────*──────*──────*──────*──────*──> (current)
-           │       │      │      │      │      │      │      │
-           │       │      │      │      │    merge   docs   docs
-           │       │      │      │      │    PR #6   Phase5  Phase4
-           │       │      │      │      │      │
-           │       │      │      │    fix/cf-auth (direct merge)
-           │       │      │      │
-           │       │      │    feature/03-manual-cf-deploy
-           │       │      │      (PR #2, #3, #4, #5 — multiple fix attempts)
-           │       │      │
-           │       │    feature/02-basic-ci-workflow (PR #1)
-           │       │
-           │     feature/01-spring-boot-app (direct commit to main)
-           │
-         first commit (empty repo)
+main  ─────*───────*──────*──────*──────*──────*──────*──────*──────*──> (current)
+           │       │      │      │      │      │      │      │      │
+           │       │      │      │      │    merge   docs   docs  merge
+           │       │      │      │      │    PR #6   Phase5  Ph4   Phase6
+           │       │      │      │      │      │                    │
+           │       │      │      │    fix/cf-auth (direct)         │
+           │       │      │      │                                  │
+           │       │      │    feature/03-manual-cf-deploy          │
+           │       │      │      (PR #2, #3, #4, #5)               │
+           │       │      │                                         │
+           │       │    feature/02-basic-ci-workflow (PR #1)        │
+           │       │                                                │
+           │     feature/01-spring-boot-app (direct)               │
+           │                                                        │
+         first commit                              feature/06-advanced-workflows
 
 
 terraform-state (orphan — no shared history with main)
@@ -1066,6 +1413,7 @@ terraform-state (orphan — no shared history with main)
 | `fix/cf-auth` | 3 (fix) | Merged | (direct) |
 | `feature/04-terraform-cf-infra` | 4 | Merged | (direct) |
 | `feature/05-full-cicd-pipeline` | 5 | Merged | PR #6 |
+| `feature/06-advanced-workflows` | 6 | Merged | (direct or PR) |
 | `terraform-state` | 5 | Active | N/A (orphan) |
 
 ---
@@ -1088,3 +1436,9 @@ terraform-state (orphan — no shared history with main)
 | **Orphan Branch** | A git branch with no shared history with other branches |
 | **Worktree** | A git feature to check out multiple branches in separate directories |
 | **Environment** | A GitHub feature for tracking deployments with optional protection rules |
+| **Reusable Workflow** | A workflow triggered by `workflow_call` — other workflows call it like a function |
+| **Composite Action** | A set of reusable steps (lighter than a reusable workflow, runs on caller's runner) |
+| **Matrix Strategy** | Runs the same job multiple times with different variable combinations |
+| **fail-fast** | Matrix setting — if true, one failure cancels all other matrix jobs |
+| **GITHUB_OUTPUT** | Special file for passing data between steps within a job |
+| **Status Badge** | A live image in README showing the latest workflow pass/fail status |
