@@ -31,7 +31,7 @@ and deploying it to **Cloud Foundry** (SAP BTP) using **Terraform** for infrastr
 | CF Org          | 86d1d2ddtrial             |
 | CF Space        | dev                       |
 | User ID         | P2011999649               |
-| CF API Endpoint | *(to be confirmed — check SAP BTP cockpit > Subaccount > Cloud Foundry Environment)* |
+| CF API Endpoint | https://api.cf.ap21.hana.ondemand.com |
 
 ## Conventions
 
@@ -66,8 +66,8 @@ and deploying it to **Cloud Foundry** (SAP BTP) using **Terraform** for infrastr
 
 ### Accounts
 - [x] SAP BTP Trial account — signed up, region: Singapore - Azure
-- [ ] Cloud Foundry environment enabled in SAP BTP subaccount (verify in cockpit)
-- [ ] Confirm CF API endpoint from SAP BTP cockpit
+- [x] Cloud Foundry environment enabled in SAP BTP subaccount
+- [x] Confirm CF API endpoint: https://api.cf.ap21.hana.ondemand.com
 
 ### Local Tools
 - [ ] Java 21 (`brew install openjdk@21`)
@@ -84,8 +84,8 @@ and deploying it to **Cloud Foundry** (SAP BTP) using **Terraform** for infrastr
 
 ## Current Status
 
-- **Active Phase:** Phase 1 — Spring Boot Application
-- **Active Branch:** `feature/01-spring-boot-app`
-- **Completed Phases:** None
-- **Blockers:** Confirm CF API endpoint from SAP BTP cockpit (needed before Phase 3)
+- **Active Phase:** Phase 3 — Manual CF Deploy Workflow
+- **Active Branch:** `feature/03-manual-cf-deploy`
+- **Completed Phases:** Phase 1 (Spring Boot App), Phase 2 (Basic CI Workflow)
+- **Blockers:** GitHub Secrets need to be configured before testing deploy
 - **Last updated:** 2026-03-14

@@ -9,6 +9,6 @@ applications:
     env:
       JBP_CONFIG_OPEN_JDK_JRE: '{ jre: { version: 21.+ } }'
     routes:
-      - route: github-action-demo-86d1d2ddtrial.cfapps.us10-001.hana.ondemand.com
+      - route: github-action-demo-86d1d2ddtrial.cfapps.ap21.hana.ondemand.com
     health-check-type: http
     health-check-http-endpoint: /actuator/health
