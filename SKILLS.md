@@ -30,7 +30,7 @@ and deploying it to **Cloud Foundry** (SAP BTP) using **Terraform** for infrastr
 | Subaccount      | trial                     |
 | CF Org          | 86d1d2ddtrial             |
 | CF Space        | dev                       |
-| User ID         | ***REDACTED_ID***               |
+| User ID         | (redacted)                |
 | CF API Endpoint | https://api.cf.ap21.hana.ondemand.com |
 
 ## Conventions
@@ -78,14 +78,14 @@ and deploying it to **Cloud Foundry** (SAP BTP) using **Terraform** for infrastr
 
 ### GitHub Repository Secrets (configured)
 - `CF_API_ENDPOINT` — `https://api.cf.ap21.hana.ondemand.com`
-- `CF_USERNAME` — email address (`***REDACTED_EMAIL***`, NOT the P-number)
+- `CF_USERNAME` — email address (NOT the P-number)
 - `CF_PASSWORD` — SAP BTP password
 - `CF_ORG` — `86d1d2ddtrial`
 - `CF_SPACE` — `dev`
 
 ### CF Authentication Notes
 - **IDP Origin:** `sap.ids` (SAP ID Service — the default identity provider)
-- **Username:** Must be the email address, not the SAP user ID (***REDACTED_ID***)
+- **Username:** Must be the email address, not the SAP user ID
 - **Auth command:** `cf auth "<email>" "<password>" --origin sap.ids`
 - **App URL:** https://github-action-demo-86d1d2ddtrial.cfapps.ap21.hana.ondemand.com
 

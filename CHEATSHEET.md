@@ -173,7 +173,7 @@ Org:             86d1d2ddtrial
 Space:           dev
 Region:          Singapore - Azure (ap21)
 IDP Origin:      sap.ids
-Auth user:       email (***REDACTED_EMAIL***), NOT P-number
+Auth user:       email (your SAP BTP login email), NOT P-number
 ```
 
 ---

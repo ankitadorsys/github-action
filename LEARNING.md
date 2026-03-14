@@ -366,7 +366,7 @@ They're injected into workflows at runtime and NEVER shown in logs.
 ```
 Repository Settings > Secrets and variables > Actions
 ├── CF_API_ENDPOINT = https://api.cf.ap21.hana.ondemand.com
-├── CF_USERNAME     = ***REDACTED_EMAIL***
+├── CF_USERNAME     = <your-email@example.com>
 ├── CF_PASSWORD     = ********
 ├── CF_ORG          = 86d1d2ddtrial
 └── CF_SPACE        = dev
@@ -405,7 +405,7 @@ Attempt 3: Used env var for password (CF_PASSWORD="${{ secrets.CF_PASSWORD }}")
 
 Attempt 4 (THE FIX):
   - Use `cf auth` (not `cf login`) — it's non-interactive
-  - Username must be EMAIL (***REDACTED_EMAIL***), NOT P-number (***REDACTED_ID***)
+  - Username must be EMAIL (your-email@example.com), NOT P-number
   - Pass password via environment variable (avoids shell escaping issues)
   - Use --origin sap.ids (SAP ID Service = the identity provider)
 ```

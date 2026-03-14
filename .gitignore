@@ -41,6 +41,13 @@ terraform/*.tfstate.*
 terraform/.terraform.lock.hcl
 terraform/terraform.tfvars
 
+# Terraform state (root level — catch accidental copies)
+*.tfstate
+*.tfstate.*
+
 # Environment
 .env
 *.log
+
+# AI tooling
+.opencode/
