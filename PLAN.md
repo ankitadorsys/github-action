@@ -66,9 +66,12 @@ Database: H2 (in-memory) → PostgreSQL (later)
 
 | Component | Technology | Purpose |
 |-----------|-----------|---------|
-| Backend | Spring Boot 3.x | REST API, JPA, validation |
+| Backend | Spring Boot 4.0.3 | REST API, JPA, validation |
 | Frontend | Angular 17+ | SPA, reactive forms, routing |
-| API Docs | OpenAPI 3.0 (springdoc) | Auto-generated spec + Swagger UI |
+| API Docs | OpenAPI 3.0 (springdoc 3.0.2) | Auto-generated spec + Swagger UI |
+| API Generation | openapi-generator-maven-plugin 7.20.0 | Contract-first: generates interfaces + DTOs |
+| Entity Mapping | MapStruct 1.6.3 | Compile-time entity-to-DTO mapping |
+| Entity Boilerplate | Lombok | Compile-time getter/setter/builder generation |
 | Auth | Keycloak (Docker) | OAuth2/OIDC identity provider |
 | Auth Protocol | OAuth2 + OIDC + PKCE | Secure token-based authentication |
 | Backend Security | spring-boot-starter-oauth2-resource-server | JWT validation |
@@ -78,80 +81,150 @@ Database: H2 (in-memory) → PostgreSQL (later)
 
 ---
 
-## Phase 7: Task CRUD API + OpenAPI
+## Phase 7: Task CRUD API + OpenAPI — DONE
 
 **Branch:** `feature/07-task-crud-api`
-**Goal:** Extend the Spring Boot app with a proper Task entity, CRUD endpoints,
-and auto-generated OpenAPI documentation with Swagger UI.
+**Goal:** Build full CRUD API with entity relationships, API-first approach,
+OpenAPI code generation, MapStruct mapping, and comprehensive tests.
 
-### Data Model
+### Approach: API-First (Contract-First)
+
+1. Define API contract in `src/main/resources/openapi/api.yaml` (single source of truth)
+2. `openapi-generator-maven-plugin` generates Java interfaces + DTO classes
+3. Controllers implement the generated interfaces
+4. MapStruct mappers convert between JPA entities and generated DTOs
+
+### Data Model (with Relationships)
 
 ```
-Task
-├── id: Long (auto-generated)
-├── title: String (required)
-├── description: String (optional)
-├── status: Enum (TODO, IN_PROGRESS, DONE)
-├── priority: Enum (LOW, MEDIUM, HIGH)
-├── dueDate: LocalDate (optional)
-├── createdAt: LocalDateTime (auto-set)
-└── updatedAt: LocalDateTime (auto-set)
+Category (1) ──── (*) Task (*) ──── (*) Tag
+                       │
+                       │ (1)
+                       │
+                      (*) TaskComment
+
+  Category  1 ──── * Task       (@OneToMany / @ManyToOne)
+  Task      * ──── * Tag        (@ManyToMany via join table task_tags)
+  Task      1 ──── * Comment    (@OneToMany with cascade + orphanRemoval)
 ```
 
 ### API Endpoints
 
 ```
-GET    /api/tasks          List all tasks
-GET    /api/tasks/{id}     Get task by ID
-POST   /api/tasks          Create a new task
-PUT    /api/tasks/{id}     Update a task
-DELETE /api/tasks/{id}     Delete a task
+GET    /api/hello                          Hello endpoint (existing)
+GET    /api/tasks                          List all tasks
+POST   /api/tasks                          Create a new task
+GET    /api/tasks/{id}                     Get task by ID
+PUT    /api/tasks/{id}                     Update a task
+DELETE /api/tasks/{id}                     Delete a task
+GET    /api/categories                     List all categories
+POST   /api/categories                     Create a category
+GET    /api/categories/{id}                Get category by ID
+PUT    /api/categories/{id}                Update a category
+DELETE /api/categories/{id}                Delete a category
+GET    /api/tags                           List all tags
+POST   /api/tags                           Create a tag
+GET    /api/tags/{id}                      Get tag by ID
+PUT    /api/tags/{id}                      Update a tag
+DELETE /api/tags/{id}                      Delete a tag
+GET    /api/tasks/{taskId}/comments        List comments for a task
+POST   /api/tasks/{taskId}/comments        Add a comment to a task
+DELETE /api/tasks/{taskId}/comments/{id}   Delete a comment
 ```
 
-### Files
+### Files Created/Modified
 
-- `pom.xml` — add springdoc-openapi, H2, Spring Data JPA dependencies
-- `src/.../model/Task.java` — JPA entity
-- `src/.../model/TaskStatus.java` — Enum (TODO, IN_PROGRESS, DONE)
-- `src/.../model/TaskPriority.java` — Enum (LOW, MEDIUM, HIGH)
-- `src/.../repository/TaskRepository.java` — Spring Data JPA repository
-- `src/.../service/TaskService.java` — Business logic layer
-- `src/.../controller/TaskController.java` — REST controller with OpenAPI annotations
-- `src/.../dto/TaskRequest.java` — Request DTO (what the client sends)
-- `src/.../dto/TaskResponse.java` — Response DTO (what the API returns)
-- `src/.../exception/TaskNotFoundException.java` — Custom exception
-- `src/.../exception/GlobalExceptionHandler.java` — @ControllerAdvice
-- `src/main/resources/application.yml` — H2 + OpenAPI config
-- `src/test/...` — Controller + service tests
+**Modified:**
+- `pom.xml` — Boot 4.0.3, Java 21, springdoc 3.0.2, Lombok, MapStruct, openapi-generator, test deps
+- `.github/workflows/pipeline.yml` — matrix [21, 25]
+- `.github/workflows/reusable-build.yml` — setup-java@v5
+- `src/main/resources/application.yml` — H2 + JPA + OpenAPI + Actuator config
+- `src/test/.../controller/HelloControllerTest.java` — added @DisplayName
 
-### What You Learn
+**Created (source):**
+- `src/main/resources/openapi/api.yaml` — OpenAPI 3.0.3 spec
+- `src/.../controller/TaskController.java` — implements TasksApi
+- `src/.../controller/CategoryController.java` — implements CategoriesApi
+- `src/.../controller/TagController.java` — implements TagsApi
+- `src/.../controller/CommentController.java` — implements CommentsApi
+- `src/.../model/Task.java` — JPA entity with all relationships, Lombok
+- `src/.../model/Category.java` — @OneToMany(mappedBy="category")
+- `src/.../model/Tag.java` — @ManyToMany(mappedBy="tags")
+- `src/.../model/TaskComment.java` — @ManyToOne(task)
+- `src/.../repository/TaskRepository.java`
+- `src/.../repository/CategoryRepository.java`
+- `src/.../repository/TagRepository.java`
+- `src/.../repository/TaskCommentRepository.java`
+- `src/.../service/TaskService.java`
+- `src/.../service/CategoryService.java`
+- `src/.../service/TagService.java`
+- `src/.../service/CommentService.java`
+- `src/.../mapper/DateTimeMapper.java` — shared LocalDateTime→OffsetDateTime
+- `src/.../mapper/TaskMapper.java`
+- `src/.../mapper/CategoryMapper.java`
+- `src/.../mapper/TagMapper.java`
+- `src/.../mapper/CommentMapper.java`
+- `src/.../exception/TaskNotFoundException.java`
+- `src/.../exception/ResourceNotFoundException.java`
+- `src/.../exception/GlobalExceptionHandler.java`
 
-- JPA entities with `@Entity`, `@Id`, `@GeneratedValue`, `@Enumerated`
-- Spring Data JPA repository (zero-implementation CRUD)
-- Service layer pattern (controller → service → repository)
-- DTO pattern (separate API shape from database shape)
-- springdoc-openapi: auto-generates OpenAPI 3.0 spec from code
-- Swagger UI: interactive API explorer at `/swagger-ui.html`
-- OpenAPI annotations: `@Operation`, `@ApiResponse`, `@Schema`
-- H2 console for browsing the in-memory database
-- Global exception handling with `@ControllerAdvice`
-- `ResponseEntity` for proper HTTP status codes (201 Created, 404 Not Found)
+**Created (tests):**
+- `src/test/.../SpringIntegrationTest.java` — 29 end-to-end tests
+- `src/test/.../controller/TaskControllerTest.java` — 9 unit tests
+- `src/test/.../controller/CategoryControllerTest.java` — 7 unit tests
+- `src/test/.../controller/TagControllerTest.java` — 7 unit tests
+- `src/test/.../controller/CommentControllerTest.java` — 6 unit tests
+- `src/test/.../service/TaskServiceTest.java` — 10 unit tests
+- `src/test/.../service/CategoryServiceTest.java` — 7 unit tests
+- `src/test/.../service/TagServiceTest.java` — 7 unit tests
+- `src/test/.../service/CommentServiceTest.java` — 6 unit tests
+
+### Test Summary: 90 tests, all passing
+
+| Test Class | Count | Type |
+|-----------|-------|------|
+| SpringIntegrationTest | 29 | Integration (full stack, H2, TestRestTemplate) |
+| TaskControllerTest | 9 | Unit (@WebMvcTest + MockMvc + @MockitoBean) |
+| CategoryControllerTest | 7 | Unit (@WebMvcTest + MockMvc) |
+| TagControllerTest | 7 | Unit (@WebMvcTest + MockMvc) |
+| CommentControllerTest | 6 | Unit (@WebMvcTest + MockMvc) |
+| TaskServiceTest | 10 | Unit (@ExtendWith(MockitoExtension) + @Mock) |
+| CategoryServiceTest | 7 | Unit (Mockito) |
+| TagServiceTest | 7 | Unit (Mockito) |
+| CommentServiceTest | 6 | Unit (Mockito) |
+| HelloControllerTest | 2 | Unit (@WebMvcTest + MockMvc) |
+
+### What Was Learned
+
+- API-First / Contract-First approach with openapi-generator
+- JPA entities with all relationship types: @OneToMany, @ManyToOne, @ManyToMany
+- Cascade types and orphanRemoval
+- MapStruct for compile-time entity-to-DTO mapping
+- Lombok for entity boilerplate elimination
+- Spring Boot 4.0 breaking changes (5 different issues found and fixed)
+- Jackson 3 as primary ObjectMapper in Boot 4.0
+- H2 in-memory database with JPA auto-DDL
+- Global exception handling with @ControllerAdvice
+- springdoc-openapi Swagger UI integration
 
 ### Checklist
 
-- [ ] H2 + JPA + springdoc dependencies added to pom.xml
-- [ ] Task entity with enums created
-- [ ] TaskRepository interface created
-- [ ] TaskService with CRUD operations created
-- [ ] TaskController with all 5 endpoints created
-- [ ] DTOs (TaskRequest, TaskResponse) created
-- [ ] Global exception handler returns proper error responses
-- [ ] Swagger UI accessible at /swagger-ui.html
-- [ ] OpenAPI spec at /v3/api-docs shows all endpoints
-- [ ] H2 console accessible at /h2-console (dev only)
-- [ ] Unit tests for controller and service
-- [ ] Existing /api/hello endpoint still works
-- [ ] CI pipeline passes
+- [x] Spring Boot upgraded to 4.0.3, Java 21
+- [x] H2 + JPA + springdoc + Lombok + MapStruct dependencies added
+- [x] OpenAPI YAML spec created (single source of truth)
+- [x] openapi-generator-maven-plugin configured with useSpringBoot4=true
+- [x] All JPA entities with relationships created (Task, Category, Tag, TaskComment)
+- [x] All repositories created
+- [x] All services with CRUD operations created
+- [x] All controllers implementing generated API interfaces created
+- [x] MapStruct mappers created (4 mappers + shared DateTimeMapper)
+- [x] Global exception handler returns proper error responses
+- [x] Swagger UI accessible at /swagger-ui.html
+- [x] OpenAPI spec at /v3/api-docs shows all endpoints
+- [x] H2 console accessible at /h2-console
+- [x] 90 tests — all passing (unit + integration)
+- [x] Existing /api/hello endpoint still works
+- [x] CI pipeline updated (matrix [21,25], setup-java@v5)
 
 ---
 
@@ -332,53 +405,13 @@ GET /api/tasks?status=TODO&priority=HIGH&page=0&size=10&sort=dueDate,asc
 
 ---
 
-## Phase 11: Categories + Tags + Richer Model
+## Phase 11: Dashboard + Analytics (was Categories + Tags — moved to Phase 7)
 
-**Branch:** `feature/11-categories-tags`
-**Goal:** Add entity relationships — categories (one-to-many) and tags (many-to-many).
-
-### Updated Data Model
-
-```
-Category (1) ──────> (*) Task (*) <──────> (*) Tag
-                          │
-                          └── userId (from JWT)
-
-Category                    Tag
-├── id: Long                ├── id: Long
-├── name: String            └── name: String
-├── color: String
-└── userId: String
-```
-
-### What You Learn
-
-- JPA relationships: `@ManyToOne`, `@ManyToMany`, `@JoinTable`
-- Cascade types and fetch strategies (EAGER vs LAZY)
-- Nested REST resources (`/api/categories/{id}/tasks`)
-- Angular: dropdown selects, tag chips (add/remove)
-- OpenAPI: nested schemas, `$ref` references
-- Keycloak: "My categories" and "my tags" scoped to user
-
-### Checklist
-
-- [ ] Category entity + CRUD endpoints
-- [ ] Tag entity + CRUD endpoints
-- [ ] Task → Category (many-to-one) relationship
-- [ ] Task ↔ Tag (many-to-many) relationship
-- [ ] Angular: category dropdown on task form
-- [ ] Angular: tag chips (select/create tags)
-- [ ] Filter tasks by category and/or tag
-- [ ] Data scoped to logged-in user
-- [ ] OpenAPI spec reflects nested relationships
-- [ ] Tests cover relationship scenarios
-
----
-
-## Phase 12: Dashboard + Analytics
-
-**Branch:** `feature/12-dashboard`
+**Branch:** `feature/11-dashboard`
 **Goal:** Add aggregation endpoints and visual dashboard with charts.
+
+> Note: Categories, Tags, and entity relationships were originally planned for Phase 11
+> but were pulled into Phase 7 to build a complete data model from the start.
 
 ### API Endpoints
 
@@ -395,8 +428,6 @@ GET /api/dashboard/weekly-trend    Completed tasks per week (last 8 weeks)
 - Custom repository methods
 - Angular charting library (ng2-charts / Chart.js)
 - Dashboard layout design
-- Keycloak admin API (list users — admin only)
-- CI/CD updates: build + deploy Angular with Spring Boot
 
 ### Checklist
 
@@ -407,9 +438,21 @@ GET /api/dashboard/weekly-trend    Completed tasks per week (last 8 weeks)
 - [ ] Priority breakdown chart (bar)
 - [ ] Weekly trend chart (line)
 - [ ] Overdue tasks alert panel
-- [ ] Admin: user list (from Keycloak admin API)
+- [ ] Tests cover aggregation queries
+
+---
+
+## Phase 12: Production Polish + Full Deployment
+
+**Branch:** `feature/12-production-deploy`
+**Goal:** CI/CD builds Angular + packages with Spring Boot, deploy full stack to CF.
+
+### Checklist
+
 - [ ] CI/CD builds Angular + packages with Spring Boot
 - [ ] Deploy to CF with full-stack app
+- [ ] Admin: user list (from Keycloak admin API)
+- [ ] Production configuration profiles
 
 ---
 

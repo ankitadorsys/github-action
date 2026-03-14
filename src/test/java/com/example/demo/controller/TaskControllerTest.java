@@ -1,0 +1,171 @@
+package com.example.demo.controller;
+
+import com.example.demo.api.model.CategoryResponse;
+import com.example.demo.api.model.TaskPriority;
+import com.example.demo.api.model.TaskRequest;
+import com.example.demo.api.model.TaskResponse;
+import com.example.demo.api.model.TaskStatus;
+import com.example.demo.exception.GlobalExceptionHandler;
+import com.example.demo.exception.TaskNotFoundException;
+import com.example.demo.service.TaskService;
+import tools.jackson.databind.ObjectMapper;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Set;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willDoNothing;
+import static org.mockito.BDDMockito.willThrow;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@WebMvcTest({TaskController.class, GlobalExceptionHandler.class})
+@DisplayName("TaskController")
+class TaskControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @MockitoBean
+    private TaskService taskService;
+
+    private TaskResponse sampleResponse() {
+        return new TaskResponse()
+                .id(1L)
+                .title("Test Task")
+                .description("A test task")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.MEDIUM)
+                .dueDate(LocalDate.of(2026, 4, 1))
+                .createdAt(OffsetDateTime.now())
+                .updatedAt(OffsetDateTime.now())
+                .category(new CategoryResponse().id(1L).name("Work").color("#FF0000"))
+                .tags(Set.of())
+                .commentCount(0);
+    }
+
+    private TaskRequest sampleRequest() {
+        return new TaskRequest("Test Task")
+                .description("A test task")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.MEDIUM)
+                .dueDate(LocalDate.of(2026, 4, 1))
+                .categoryId(1L)
+                .tagIds(Set.of());
+    }
+
+    @Test
+    @DisplayName("GET /api/tasks - returns list of tasks")
+    void getAllTasks_returnsListOfTasks() throws Exception {
+        given(taskService.getAllTasks()).willReturn(List.of(sampleResponse()));
+
+        mockMvc.perform(get("/api/tasks"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].title").value("Test Task"))
+                .andExpect(jsonPath("$[0].status").value("TODO"));
+    }
+
+    @Test
+    @DisplayName("GET /api/tasks - returns empty list when no tasks exist")
+    void getAllTasks_returnsEmptyList() throws Exception {
+        given(taskService.getAllTasks()).willReturn(List.of());
+
+        mockMvc.perform(get("/api/tasks"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
+    }
+
+    @Test
+    @DisplayName("GET /api/tasks/{id} - returns task by id")
+    void getTaskById_returnsTask() throws Exception {
+        given(taskService.getTaskById(1L)).willReturn(sampleResponse());
+
+        mockMvc.perform(get("/api/tasks/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.title").value("Test Task"))
+                .andExpect(jsonPath("$.priority").value("MEDIUM"));
+    }
+
+    @Test
+    @DisplayName("GET /api/tasks/{id} - returns 404 when task not found")
+    void getTaskById_notFound_returns404() throws Exception {
+        given(taskService.getTaskById(99L)).willThrow(new TaskNotFoundException(99L));
+
+        mockMvc.perform(get("/api/tasks/99"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Task not found with id: 99"));
+    }
+
+    @Test
+    @DisplayName("POST /api/tasks - creates and returns new task")
+    void createTask_returnsCreatedTask() throws Exception {
+        given(taskService.createTask(any(TaskRequest.class))).willReturn(sampleResponse());
+
+        mockMvc.perform(post("/api/tasks")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(sampleRequest())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.title").value("Test Task"));
+    }
+
+    @Test
+    @DisplayName("PUT /api/tasks/{id} - updates and returns task")
+    void updateTask_returnsUpdatedTask() throws Exception {
+        TaskResponse updated = sampleResponse().title("Updated Task");
+        given(taskService.updateTask(eq(1L), any(TaskRequest.class))).willReturn(updated);
+
+        TaskRequest request = sampleRequest().title("Updated Task");
+        mockMvc.perform(put("/api/tasks/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("Updated Task"));
+    }
+
+    @Test
+    @DisplayName("PUT /api/tasks/{id} - returns 404 when task not found")
+    void updateTask_notFound_returns404() throws Exception {
+        given(taskService.updateTask(eq(99L), any(TaskRequest.class)))
+                .willThrow(new TaskNotFoundException(99L));
+
+        mockMvc.perform(put("/api/tasks/99")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(sampleRequest())))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("DELETE /api/tasks/{id} - returns 204 no content")
+    void deleteTask_returnsNoContent() throws Exception {
+        willDoNothing().given(taskService).deleteTask(1L);
+
+        mockMvc.perform(delete("/api/tasks/1"))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @DisplayName("DELETE /api/tasks/{id} - returns 404 when task not found")
+    void deleteTask_notFound_returns404() throws Exception {
+        willThrow(new TaskNotFoundException(99L)).given(taskService).deleteTask(99L);
+
+        mockMvc.perform(delete("/api/tasks/99"))
+                .andExpect(status().isNotFound());
+    }
+}

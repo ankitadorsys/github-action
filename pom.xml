@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.3</version>
+        <version>4.0.3</version>
         <relativePath/>
     </parent>
 
@@ -15,35 +15,238 @@
     <artifactId>github-action-demo</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>github-action-demo</name>
-    <description>Spring Boot demo for learning GitHub Actions with Cloud Foundry deployment</description>
+    <description>Full-stack Task Manager — Spring Boot REST API with JPA, OpenAPI, and Angular frontend</description>
 
     <properties>
-        <java.version>17</java.version>
+        <java.version>21</java.version>
+        <openapi-generator.version>7.20.0</openapi-generator.version>
+        <swagger-annotations.version>2.2.30</swagger-annotations.version>
+        <mapstruct.version>1.6.3</mapstruct.version>
+        <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
     </properties>
 
     <dependencies>
+        <!-- === Web === -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
+        <!-- === Data (JPA + H2) === -->
+        <!-- Spring Data JPA: provides repository abstractions over JPA/Hibernate.
+             Instead of writing SQL, you define a Java interface and Spring generates
+             the implementation (findById, save, delete, etc.) at runtime. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <!-- H2: an in-memory database that lives inside your app's JVM.
+             No installation needed — perfect for development and testing.
+             Data disappears when the app stops (it's RAM-only).
+             We'll upgrade to PostgreSQL in a later phase. -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- === Validation === -->
+        <!-- Bean Validation (Hibernate Validator): annotations like @NotBlank, @Size,
+             @NotNull that automatically validate request bodies. Spring checks these
+             before your controller code runs — invalid requests get a 400 response. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- === API Documentation (OpenAPI / Swagger UI) === -->
+        <!-- springdoc-openapi: serves Swagger UI at runtime where you can
+             try out API endpoints interactively. Also exposes the OpenAPI spec
+             as JSON at /v3/api-docs. v3.x is for Spring Boot 4.x. -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>3.0.2</version>
+        </dependency>
+
+        <!-- Swagger annotations used by the generated API interfaces.
+             The openapi-generator-maven-plugin generates interfaces annotated
+             with @Operation, @ApiResponse, @Tag, etc. from this library. -->
+        <dependency>
+            <groupId>io.swagger.core.v3</groupId>
+            <artifactId>swagger-annotations-jakarta</artifactId>
+            <version>${swagger-annotations.version}</version>
+        </dependency>
+
+        <!-- === Lombok — Boilerplate Eliminator === -->
+        <!-- Lombok is a compile-time annotation processor that generates
+             repetitive code (getters, setters, constructors, equals, hashCode,
+             toString, builders) so you don't have to write it by hand.
+
+             How it works:
+               1. You annotate a class with @Getter, @Setter, @Builder, etc.
+               2. At compile time, Lombok's annotation processor runs BEFORE javac.
+               3. It modifies the Abstract Syntax Tree (AST) to add the methods.
+               4. javac compiles the modified AST — the generated methods exist
+                  in the .class file but NOT in your source code.
+
+             Key annotations we use:
+               @Getter / @Setter    — generates getXxx() / setXxx() for all fields
+               @NoArgsConstructor   — generates a no-arg constructor (JPA requires one)
+               @AllArgsConstructor  — generates a constructor with all fields
+               @Builder             — generates a fluent builder pattern
+               @ToString            — generates toString() (exclude relationships to avoid loops!)
+               @EqualsAndHashCode   — generates equals() and hashCode()
+
+             Important: scope is "provided" because Lombok is only needed at
+             compile time. It doesn't ship in the final JAR — the generated
+             code is plain Java. Version is managed by spring-boot-starter-parent. -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- === MapStruct — Compile-Time Object Mapper === -->
+        <!-- MapStruct generates type-safe mapping code between entities and DTOs
+             at compile time. Like Lombok, it's an annotation processor — you define
+             a @Mapper interface with method signatures, and MapStruct generates
+             the implementation class with all the getter/setter calls.
+
+             Why not just write the mapping by hand?
+               - Manual mapping is error-prone (miss a field, get a silent bug)
+               - MapStruct warns at compile time if fields don't match
+               - Zero runtime overhead — it generates plain Java method calls
+
+             Requires lombok-mapstruct-binding so MapStruct sees Lombok-generated
+             getters/setters. Configured in maven-compiler-plugin annotationProcessorPaths. -->
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+            <version>${mapstruct.version}</version>
+        </dependency>
+
+        <!-- === Monitoring === -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
+        <!-- === Testing === -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Spring Boot 4.0 modular change: test slice annotations like @WebMvcTest
+             moved from spring-boot-test-autoconfigure into module-specific jars.
+             @WebMvcTest is now in spring-boot-webmvc-test, package:
+             org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest
+             (was: org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-webmvc-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Spring Boot 4.0 modular change: TestRestTemplate moved from
+             spring-boot-test into spring-boot-resttestclient, package:
+             org.springframework.boot.resttestclient.TestRestTemplate
+             (was: org.springframework.boot.test.web.client.TestRestTemplate) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-resttestclient</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Required by spring-boot-resttestclient: its auto-configuration class
+             references RestTemplateBuilder from spring-boot-restclient.
+             Without this, TestRestTemplate fails with NoClassDefFoundError. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-restclient</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
 
     <build>
         <plugins>
+            <!-- openapi-generator: reads the OpenAPI YAML spec and generates
+                 Java interfaces (controller APIs) and DTO classes at build time.
+                 This is the "API-First" / "Contract-First" approach:
+                   1. You define the API contract in openapi/api.yaml
+                   2. This plugin generates interfaces + DTOs into target/generated-sources
+                   3. You write controller classes that implement those interfaces
+                 The generated code is the single source of truth for request/response shapes. -->
+            <plugin>
+                <groupId>org.openapitools</groupId>
+                <artifactId>openapi-generator-maven-plugin</artifactId>
+                <version>${openapi-generator.version}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <inputSpec>${project.basedir}/src/main/resources/openapi/api.yaml</inputSpec>
+                            <generatorName>spring</generatorName>
+                            <library>spring-boot</library>
+                            <apiPackage>com.example.demo.api</apiPackage>
+                            <modelPackage>com.example.demo.api.model</modelPackage>
+                            <configOptions>
+                                <useSpringBoot4>true</useSpringBoot4>
+                                <interfaceOnly>true</interfaceOnly>
+                                <useTags>true</useTags>
+                                <openApiNullable>false</openApiNullable>
+                                <documentationProvider>springdoc</documentationProvider>
+                                <useBeanValidation>true</useBeanValidation>
+                                <dateLibrary>java8</dateLibrary>
+                                <useResponseEntity>true</useResponseEntity>
+                            </configOptions>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+
+            <!-- Compiler plugin with annotation processor paths.
+                 When using multiple annotation processors (Lombok + MapStruct),
+                 you must list them explicitly here so Maven knows the order.
+                 The lombok-mapstruct-binding ensures MapStruct waits for Lombok
+                 to generate getters/setters/builders before generating mappers.
+                 The defaultComponentModel=spring arg makes all @Mapper interfaces
+                 generate as Spring @Component beans (injectable via @Autowired). -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.mapstruct</groupId>
+                            <artifactId>mapstruct-processor</artifactId>
+                            <version>${mapstruct.version}</version>
+                        </path>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok-mapstruct-binding</artifactId>
+                            <version>${lombok-mapstruct-binding.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                    <compilerArgs>
+                        <arg>-Amapstruct.defaultComponentModel=spring</arg>
+                    </compilerArgs>
+                </configuration>
             </plugin>
         </plugins>
     </build>
