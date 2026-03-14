@@ -1,0 +1,92 @@
+# =====================================================================
+# Reusable Build Workflow
+# =====================================================================
+# This is a REUSABLE workflow — it can't run on its own.
+# Other workflows CALL it using:
+#   uses: ./.github/workflows/reusable-build.yml
+#
+# Think of it like a function:
+#   - It accepts inputs (parameters)
+#   - It does work (build & test)
+#   - It produces outputs (build status)
+#
+# Key concept: `workflow_call` trigger
+#   - Unlike `push` or `pull_request`, this trigger means
+#     "I can only be called by another workflow"
+#   - The calling workflow passes inputs, just like function arguments
+#
+# This workflow demonstrates:
+#   - Reusable workflows (`workflow_call`)
+#   - Input parameters with defaults
+#   - Output values
+#   - Secrets passing
+# =====================================================================
+
+name: Reusable Build
+
+on:
+  # workflow_call = "I'm a reusable workflow, call me from other workflows"
+  # This is the ONLY trigger — you can't run this from the Actions tab.
+  workflow_call:
+
+    # INPUTS — parameters the caller can pass
+    # Like function arguments: reusable_build(java_version='21', upload_artifact=false)
+    inputs:
+      java-version:
+        description: 'Java version to build with'
+        required: false
+        type: string
+        default: '21'
+      upload-artifact:
+        description: 'Whether to upload the JAR as an artifact'
+        required: false
+        type: boolean
+        default: false
+
+    # OUTPUTS — values this workflow returns to the caller
+    # Like a function return value
+    outputs:
+      jar-name:
+        description: 'Name of the built JAR file'
+        value: ${{ jobs.build.outputs.jar-name }}
+
+jobs:
+  build:
+    name: Build & Test (Java ${{ inputs.java-version }})
+    runs-on: ubuntu-latest
+
+    # Job-level outputs — exposed to the calling workflow via workflow outputs above
+    outputs:
+      jar-name: ${{ steps.set-jar-name.outputs.jar-name }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java ${{ inputs.java-version }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ inputs.java-version }}
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build and test with Maven
+        run: mvn clean verify -B --no-transfer-progress
+
+      # Set the JAR name as an output so callers can reference it
+      - name: Set JAR name
+        id: set-jar-name
+        run: |
+          JAR_NAME=$(ls target/*.jar | head -1 | xargs basename)
+          echo "jar-name=$JAR_NAME" >> "$GITHUB_OUTPUT"
+          echo "Built: $JAR_NAME"
+
+      # Only upload artifact if the caller requested it
+      # (e.g., the deploy job needs the JAR, but matrix test jobs don't)
+      - name: Upload JAR artifact
+        if: inputs.upload-artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-jar
+          path: target/github-action-demo-0.0.1-SNAPSHOT.jar
+          retention-days: 7
