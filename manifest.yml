@@ -7,7 +7,7 @@ applications:
     buildpacks:
       - java_buildpack
     env:
-      JBP_CONFIG_OPEN_JDK_JRE: '{ jre: { version: 17.+ } }'
+      JBP_CONFIG_OPEN_JDK_JRE: '{ jre: { version: 21.+ } }'
     routes:
       - route: github-action-demo-86d1d2ddtrial.cfapps.ap21.hana.ondemand.com
     health-check-type: http

@@ -73,8 +73,8 @@ resource "cloudfoundry_app" "app" {
   health_check_type          = "http"
   health_check_http_endpoint = "/actuator/health"
 
-  # Set Java 17 via environment variable (same as manifest.yml)
+  # Set Java 21 JRE runtime (can run Java 17 bytecode — forward compatible)
   environment = {
-    JBP_CONFIG_OPEN_JDK_JRE = "{ jre: { version: 17.+ } }"
+    JBP_CONFIG_OPEN_JDK_JRE = "{ jre: { version: 21.+ } }"
   }
 }
