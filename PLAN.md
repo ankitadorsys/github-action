@@ -228,7 +228,7 @@ DELETE /api/tasks/{taskId}/comments/{id}   Delete a comment
 
 ---
 
-## Phase 8: Keycloak + Spring Security
+## Phase 8: Keycloak + Spring Security — DONE
 
 **Branch:** `feature/08-keycloak-security`
 **Goal:** Set up Keycloak via Docker and secure the API with OAuth2/JWT.
@@ -236,33 +236,96 @@ DELETE /api/tasks/{taskId}/comments/{id}   Delete a comment
 ### Keycloak Configuration
 
 ```
-Keycloak (Docker)
+Keycloak 26.2.5 (Docker)
 └── Realm: task-manager
     ├── Client: task-manager-api (backend — confidential)
     │   └── Service account: validates tokens
     ├── Client: task-manager-web (frontend — public, PKCE)
     │   └── Redirect URI: http://localhost:4200/*
     ├── Realm Roles:
-    │   ├── ROLE_ADMIN — can manage all tasks + users
-    │   └── ROLE_USER — can manage own tasks only
+    │   ├── ROLE_ADMIN — can manage all tasks + categories + tags
+    │   └── ROLE_USER — can manage own tasks only, read categories/tags
     └── Test Users:
-        ├── admin / admin123 (ROLE_ADMIN)
+        ├── admin / admin123 (ROLE_ADMIN + ROLE_USER)
         └── user1 / user123 (ROLE_USER)
 ```
 
-### Files
+### Security Architecture
 
-- `docker-compose.yml` — Keycloak + (optional) PostgreSQL for Keycloak
-- `keycloak/realm-export.json` — Pre-configured realm (importable)
-- `pom.xml` — add spring-boot-starter-oauth2-resource-server
-- `src/.../config/SecurityConfig.java` — JWT validation, role mapping, CORS
-- `src/main/resources/application.yml` — Keycloak issuer-uri, JWKS config
-- Update `TaskController.java` — `@PreAuthorize` role checks
-- Update `TaskService.java` — filter tasks by user (from JWT `sub` claim)
-- `src/.../model/Task.java` — add `userId` field
-- Swagger UI config — OAuth2 "Authorize" button
+```
+Controller layer:    @PreAuthorize for role checks, calls AuthenticationService.getCurrentUser()
+     ↓ passes userId/isAdmin as params to service methods
+Service layer:       Business logic, receives userId as parameter (no security awareness)
+AuthenticationService: Extracts user info from JWT SecurityContext (falls back to anonymous admin when no JWT)
+SecurityConfig:      JWT validation, Keycloak realm_access role mapping, @EnableMethodSecurity (@Profile !nosecurity)
+NoSecurityConfig:    Permits all (@Profile nosecurity) — for integration tests without Keycloak
+TestSecurityConfig:  Same SecurityFilterChain but NO @EnableMethodSecurity — for @WebMvcTest
+```
 
-### What You Learn
+### Authorization Model
+
+| Resource | ROLE_USER | ROLE_ADMIN |
+|----------|-----------|------------|
+| Tasks | CRUD own tasks only | CRUD all tasks |
+| Categories | Read only | Full CRUD |
+| Tags | Read only | Full CRUD |
+| Comments | Full CRUD | Full CRUD |
+| Public endpoints | Open | Open |
+
+Public: `/api/hello`, `/swagger-ui/**`, `/v3/api-docs/**`, `/actuator/health`, `/h2-console/**`
+
+### Files Created/Modified
+
+**Modified:**
+- `pom.xml` — added oauth2-resource-server + spring-security-test deps
+- `src/.../controller/TaskController.java` — @PreAuthorize + authenticationService.getCurrentUser()
+- `src/.../controller/CategoryController.java` — @PreAuthorize role checks
+- `src/.../controller/TagController.java` — @PreAuthorize role checks
+- `src/.../controller/CommentController.java` — @PreAuthorize role checks
+- `src/.../service/TaskService.java` — userId/isAdmin params, verifyOwnership(), findByUserId()
+- `src/.../model/Task.java` — added userId field
+- `src/.../repository/TaskRepository.java` — added findByUserId()
+- `src/.../exception/GlobalExceptionHandler.java` — AccessDeniedException → 403
+- `src/main/resources/application.yml` — JWT issuer-uri config
+- `src/main/resources/openapi/api.yaml` — bearerAuth, 401/403 responses, userId in TaskResponse
+- All controller tests — @Import(TestSecurityConfig), security mocks
+- `src/test/.../service/TaskServiceTest.java` — userId/isAdmin param tests
+- `src/test/.../SpringIntegrationTest.java` — @ActiveProfiles("nosecurity")
+
+**Created:**
+- `docker-compose.yml` — Keycloak 26.2.5 on port 8180
+- `keycloak/realm-export.json` — Pre-configured realm
+- `src/.../config/SecurityConfig.java` — JWT + @EnableMethodSecurity + Keycloak role converter
+- `src/.../config/NoSecurityConfig.java` — @Profile("nosecurity") permits all
+- `src/.../security/AuthenticatedUser.java` — Record(userId, username, roles)
+- `src/.../security/AuthenticationService.java` — Extract user from JWT, fallback to anonymous
+- `src/main/resources/application-nosecurity.yml` — blanks out issuer-uri
+- `src/test/.../config/TestSecurityConfig.java` — no @EnableMethodSecurity for @WebMvcTest
+- `src/test/.../controller/SecurityTest.java` — 18 auth/authz tests (@SpringBootTest)
+
+### Test Summary: 114 tests, all passing
+
+| Test Class | Count | Type |
+|-----------|-------|------|
+| SpringIntegrationTest | 29 | Integration (nosecurity profile, TestRestTemplate, H2) |
+| TaskControllerTest | 9 | Unit (@WebMvcTest + TestSecurityConfig + MockMvc) |
+| CategoryControllerTest | 7 | Unit (@WebMvcTest + TestSecurityConfig) |
+| TagControllerTest | 7 | Unit (@WebMvcTest + TestSecurityConfig) |
+| CommentControllerTest | 6 | Unit (@WebMvcTest + TestSecurityConfig) |
+| HelloControllerTest | 2 | Unit (@WebMvcTest + TestSecurityConfig) |
+| SecurityTest | 18 | Security (@SpringBootTest + MockJwtDecoder + @PreAuthorize) |
+| TaskServiceTest | 16 | Unit (Mockito — userId/isAdmin/ownership tests) |
+| CategoryServiceTest | 7 | Unit (Mockito) |
+| TagServiceTest | 7 | Unit (Mockito) |
+| CommentServiceTest | 6 | Unit (Mockito) |
+
+### Key Discoveries
+
+1. **@WebMvcTest + @EnableMethodSecurity proxy issue**: @PreAuthorize creates proxies on controllers implementing generated interfaces, breaking MVC handler resolution → 404. Fix: TestSecurityConfig without @EnableMethodSecurity for unit tests.
+2. **SecurityTest as @SpringBootTest**: Full context needed for @PreAuthorize testing. @MockitoBean JwtDecoder prevents Keycloak startup lookup.
+3. **AuthenticationService fallback**: Returns anonymous admin user when no JWT present — allows nosecurity profile integration tests to work without mocking security context.
+
+### What Was Learned
 
 - OAuth2 / OpenID Connect protocol (authorization code flow + PKCE)
 - Keycloak concepts: realms, clients, roles, users
@@ -272,23 +335,25 @@ Keycloak (Docker)
 - `@PreAuthorize("hasRole('ADMIN')")` for role-based access
 - Extracting user info from JWT claims (`sub`, `preferred_username`, `realm_access`)
 - CORS configuration (Angular on :4200 calling API on :8080)
-- Swagger UI OAuth2 integration (login via Keycloak to test protected endpoints)
 - Realm export/import for reproducible Keycloak setup
+- @EnableMethodSecurity proxy interaction with @WebMvcTest
+- Profile-based security configs (nosecurity for tests, real security for production)
 
 ### Checklist
 
-- [ ] Docker Compose with Keycloak running on port 8180
-- [ ] Realm "task-manager" created with roles and test users
-- [ ] Realm export saved for reproducibility
-- [ ] Spring Security validates Keycloak JWTs
-- [ ] Unauthenticated requests get 401
-- [ ] ROLE_USER can CRUD own tasks only
-- [ ] ROLE_ADMIN can CRUD all tasks
-- [ ] Swagger UI has "Authorize" button with Keycloak OAuth2 flow
-- [ ] CORS configured for localhost:4200
-- [ ] Task.userId populated from JWT on creation
-- [ ] Tests updated (mock JWT for security tests)
-- [ ] CI pipeline passes (Keycloak not needed for unit tests)
+- [x] Docker Compose with Keycloak 26.2.5 running on port 8180
+- [x] Realm "task-manager" created with roles and test users
+- [x] Realm export saved for reproducibility
+- [x] Spring Security validates Keycloak JWTs
+- [x] Unauthenticated requests get 401
+- [x] ROLE_USER can CRUD own tasks only
+- [x] ROLE_ADMIN can CRUD all tasks
+- [x] CORS configured for localhost:4200
+- [x] Task.userId populated from JWT on creation
+- [x] Tests updated (mock JWT for security tests)
+- [x] 114 tests — all passing
+- [x] CI pipeline passes (Keycloak not needed for unit tests)
+- [ ] Swagger UI has "Authorize" button with Keycloak OAuth2 flow (deferred to Phase 9)
 
 ---
 

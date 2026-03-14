@@ -91,10 +91,13 @@ with Spring Boot, Angular, OpenAPI, and Keycloak authentication.
 | API approach                  | Contract-First (API-First) | OpenAPI YAML is single source of truth; openapi-generator generates interfaces + DTOs |
 | DTO generation                | openapi-generator-maven-plugin | Auto-generates from api.yaml — no hand-written DTOs |
 | Entity boilerplate            | Lombok            | @Getter/@Setter/@Builder etc. — compile-time only |
-| Entity-to-DTO mapping         | MapStruct 1.6.3   | Compile-time mapper generation, zero runtime overhead |
 | Entity relationships          | All types in Phase 7 | @OneToMany, @ManyToOne, @ManyToMany pulled from Phase 11 |
 | HelloController               | Does NOT implement HelloApi | Generated HelloApi returns ResponseEntity<String> text/plain, but existing controller returns Map JSON. Changing would break tests. |
 | Monorepo restructure          | Phase 9           | backend/ + frontend/ + api-spec/ split happens when Angular arrives |
+| Security architecture         | SRP layers        | Controllers = HTTP + @PreAuthorize; AuthenticationService = JWT extraction; Services = business logic (receive userId/isAdmin as params) |
+| @WebMvcTest + @EnableMethodSecurity | TestSecurityConfig | Proxies break MVC handler resolution; test security config omits @EnableMethodSecurity |
+| Security testing              | @SpringBootTest   | SecurityTest uses full context + @MockitoBean JwtDecoder for @PreAuthorize tests |
+| AuthenticationService fallback | Anonymous admin   | Returns default admin user when no JWT — enables nosecurity profile integration tests |
 
 ## Version Decisions
 
@@ -116,6 +119,7 @@ with Spring Boot, Angular, OpenAPI, and Keycloak authentication.
 3. **`TestRestTemplate` package move** — Now in `org.springframework.boot.resttestclient.TestRestTemplate`. Requires `spring-boot-resttestclient` test dependency + `@AutoConfigureTestRestTemplate` annotation.
 4. **`RestTemplateBuilder` dependency** — `spring-boot-resttestclient` needs `spring-boot-restclient` on the classpath (provides `RestTemplateBuilder`). Without it: `NoClassDefFoundError`.
 5. **Jackson 3 is primary** — Auto-configured `ObjectMapper` is `tools.jackson.databind.ObjectMapper` (Jackson 3), NOT `com.fasterxml.jackson.databind.ObjectMapper` (Jackson 2). All test files must use Jackson 3 imports. Jackson 2 annotations still work.
+6. **`@EnableMethodSecurity` proxies break `@WebMvcTest`** — Controllers with `@PreAuthorize` that implement generated interfaces get proxied, breaking MVC handler mapping → 404. Fix: use `TestSecurityConfig` without `@EnableMethodSecurity` for `@WebMvcTest`; use `@SpringBootTest` for authorization testing.
 
 ## API-First Architecture (Phase 7)
 
@@ -200,13 +204,13 @@ Category (1) ──── (*) Task (*) ──── (*) Tag
 
 ## Current Status
 
-- **Active Phase:** Phase 7 — COMPLETE
-- **Active Branch:** `feature/07-task-crud-api` (ready to merge to `main`)
+- **Active Phase:** Phase 8 — COMPLETE
+- **Active Branch:** `feature/08-keycloak-security` (ready to merge to `main`)
 - **Part A (Phases 1-6):** COMPLETE — CI/CD pipeline with Terraform + CF deployed
 - **Part B (Phases 7-12):** IN PROGRESS
 - **Deployed App:** https://github-action-demo-86d1d2ddtrial.cfapps.ap21.hana.ondemand.com/api/hello
 - **Terraform:** App + route managed by Terraform; state on `terraform-state` branch
 - **CI/CD Pipeline:** `.github/workflows/pipeline.yml` — matrix build (Java 21+25), reusable workflows, terraform plan on PR, terraform apply + deploy on merge to main
-- **Tests:** 90 total (all passing) — 29 integration + 31 controller unit + 30 service unit
-- **Next:** Phase 8 — Keycloak + Spring Security
+- **Tests:** 114 total (all passing) — 29 integration + 33 controller unit + 36 service unit + 18 security
+- **Next:** Phase 9 — Angular Frontend
 - **Last updated:** 2026-03-14
