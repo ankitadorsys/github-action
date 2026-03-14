@@ -1,0 +1,376 @@
+# =====================================================================
+# Full CI/CD Pipeline
+# =====================================================================
+# This is the unified pipeline for build, infrastructure, and deployment.
+# It replaces the separate ci.yml and deploy.yml workflows from earlier phases.
+#
+# How it works:
+#   - On EVERY push/PR:    Job 1 runs (build & test)
+#   - On PRs to main:      Job 2 also runs (terraform plan, posted as PR comment)
+#   - On merge to main:    Job 1 + Job 3 run (build, then terraform apply + deploy)
+#
+# Key concepts demonstrated:
+#   - Multi-job workflows with `needs:` dependencies
+#   - Conditional execution with `if:` expressions
+#   - Artifact passing between jobs (JAR file)
+#   - Terraform state stored on a dedicated git branch
+#   - Posting Terraform plan output as a PR comment
+#   - GitHub Environments for deployment protection
+# =====================================================================
+
+name: CI/CD Pipeline
+
+# -----------------------------------------------------------------
+# TRIGGERS
+# -----------------------------------------------------------------
+# `push` to main or feature branches triggers build (and deploy on main).
+# `pull_request` to main triggers build + terraform plan.
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
+
+# -----------------------------------------------------------------
+# PERMISSIONS
+# -----------------------------------------------------------------
+# We need extra permissions beyond the default:
+#   - contents: write  — to push updated terraform state back to the repo
+#   - pull-requests: write — to post terraform plan as a PR comment
+permissions:
+  contents: write
+  pull-requests: write
+
+# -----------------------------------------------------------------
+# WORKFLOW-LEVEL ENVIRONMENT VARIABLES
+# -----------------------------------------------------------------
+env:
+  JAVA_VERSION: '21'
+  JAVA_DISTRIBUTION: 'temurin'
+  JAR_NAME: github-action-demo-0.0.1-SNAPSHOT.jar
+  TF_VERSION: '1.5.7'
+
+jobs:
+
+  # =================================================================
+  # JOB 1: BUILD & TEST
+  # =================================================================
+  # Runs on every push and PR. Compiles the app, runs tests, and
+  # uploads the JAR as an artifact for downstream jobs.
+  # =================================================================
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          cache: 'maven'
+
+      # `mvn clean verify` compiles, tests, and packages the JAR.
+      # -B = batch mode (no interactive prompts)
+      - name: Build and test with Maven
+        run: mvn clean verify -B --no-transfer-progress
+
+      # Upload the JAR so the deploy job can use it without rebuilding.
+      # We only upload on pushes to main (deploy only happens there).
+      - name: Upload JAR artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-jar
+          path: target/${{ env.JAR_NAME }}
+          retention-days: 7
+
+  # =================================================================
+  # JOB 2: TERRAFORM PLAN (PRs only)
+  # =================================================================
+  # Runs only on pull requests targeting main.
+  # Shows what infrastructure changes would happen if this PR is merged.
+  # Posts the plan output as a PR comment for review.
+  #
+  # This job does NOT modify infrastructure — it's read-only.
+  # =================================================================
+  terraform-plan:
+    name: Terraform Plan
+    runs-on: ubuntu-latest
+    needs: build
+    # Only run on pull requests — we want to show the plan before merging
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ---------------------------------------------------------------
+      # Restore Terraform state from the dedicated branch.
+      # We store state on the `terraform-state` branch to persist it
+      # across workflow runs (since each run starts with a clean slate).
+      # ---------------------------------------------------------------
+      - name: Restore Terraform state
+        run: |
+          # Fetch the terraform-state branch (shallow, just the latest)
+          git fetch origin terraform-state --depth=1
+
+          # Extract the state file from that branch into our working directory
+          git show origin/terraform-state:terraform.tfstate > terraform/terraform.tfstate 2>/dev/null || echo "No existing state found — will create fresh"
+
+          # Show state status for debugging
+          if [ -f terraform/terraform.tfstate ]; then
+            echo "✓ State file restored ($(wc -c < terraform/terraform.tfstate) bytes)"
+          fi
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          # IMPORTANT: This wraps terraform output so we can capture it.
+          # Without this, the plan output can't be saved to a variable.
+          terraform_wrapper: true
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init -input=false
+
+      # ---------------------------------------------------------------
+      # Run terraform plan and save the output.
+      # We use `-detailed-exitcode` so the exit code tells us:
+      #   0 = no changes
+      #   1 = error
+      #   2 = changes detected
+      # We pass CF credentials via -var flags (from GitHub Secrets).
+      # The app_path doesn't matter for plan — we just need a valid path,
+      # so we create a dummy file.
+      # ---------------------------------------------------------------
+      - name: Terraform Plan
+        id: plan
+        working-directory: terraform
+        run: |
+          # Create a dummy JAR for planning (Terraform validates the path exists)
+          mkdir -p ../target
+          touch ../target/${{ env.JAR_NAME }}
+
+          terraform plan \
+            -var="cf_username=${{ secrets.CF_USERNAME }}" \
+            -var="cf_password=${{ secrets.CF_PASSWORD }}" \
+            -input=false \
+            -no-color \
+            -detailed-exitcode \
+            2>&1 || true
+        env:
+          # Prevent Terraform from prompting
+          TF_IN_AUTOMATION: true
+
+      # ---------------------------------------------------------------
+      # Post the plan as a PR comment.
+      # This lets reviewers see exactly what will change in infra
+      # before they approve the PR. Uses the GitHub API directly.
+      # ---------------------------------------------------------------
+      - name: Post Plan to PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const planOutput = `${{ steps.plan.outputs.stdout }}`;
+            const planError = `${{ steps.plan.outputs.stderr }}`;
+
+            // Truncate if too long (GitHub comment limit is 65536 chars)
+            const maxLen = 60000;
+            const plan = planOutput.length > maxLen
+              ? planOutput.substring(0, maxLen) + '\n\n... (truncated)'
+              : planOutput;
+
+            const body = `### Terraform Plan Output
+            
+            <details>
+            <summary>Click to expand</summary>
+
+            \`\`\`
+            ${plan}
+            \`\`\`
+
+            </details>
+
+            ${planError ? `**Warnings/Errors:**\n\`\`\`\n${planError}\n\`\`\`` : ''}
+
+            *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+            // Find existing comment from this workflow (update instead of creating duplicates)
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const botComment = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes('### Terraform Plan Output')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body,
+              });
+            }
+
+  # =================================================================
+  # JOB 3: TERRAFORM APPLY & DEPLOY (merge to main only)
+  # =================================================================
+  # Runs only on pushes to main (i.e., after a PR is merged).
+  # It applies the Terraform configuration (creating/updating the CF
+  # app and route) and then pushes updated state back to the repo.
+  #
+  # Uses a GitHub Environment called "production" — you can add
+  # protection rules (manual approval, wait timer) in repo settings.
+  # =================================================================
+  deploy:
+    name: Deploy to Cloud Foundry
+    runs-on: ubuntu-latest
+    needs: build
+    # Only run on push to main — NOT on PRs, NOT on feature branches
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    # GitHub Environment — this is how you add deployment protection rules.
+    # Go to repo Settings > Environments > New environment > "production"
+    # You can add: required reviewers, wait timer, branch restrictions.
+    environment:
+      name: production
+      url: https://github-action-demo-86d1d2ddtrial.cfapps.ap21.hana.ondemand.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Download the JAR built by the build job
+      - name: Download JAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-jar
+          path: target/
+
+      - name: Verify JAR exists
+        run: |
+          ls -la target/
+          echo "JAR file: target/${{ env.JAR_NAME }}"
+          test -f "target/${{ env.JAR_NAME }}" || { echo "ERROR: JAR not found!"; exit 1; }
+
+      # ---------------------------------------------------------------
+      # Restore Terraform state from the dedicated branch
+      # ---------------------------------------------------------------
+      - name: Restore Terraform state
+        run: |
+          git fetch origin terraform-state --depth=1
+          git show origin/terraform-state:terraform.tfstate > terraform/terraform.tfstate 2>/dev/null || echo "No existing state — fresh apply"
+          if [ -f terraform/terraform.tfstate ]; then
+            echo "✓ State file restored ($(wc -c < terraform/terraform.tfstate) bytes)"
+          fi
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          # Disable wrapper for apply — we want real exit codes
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init -input=false
+
+      # ---------------------------------------------------------------
+      # Apply the Terraform configuration.
+      # -auto-approve skips the interactive "yes" prompt (required in CI).
+      # This creates/updates the CF app and route.
+      # ---------------------------------------------------------------
+      - name: Terraform Apply
+        working-directory: terraform
+        run: |
+          terraform apply \
+            -var="cf_username=${{ secrets.CF_USERNAME }}" \
+            -var="cf_password=${{ secrets.CF_PASSWORD }}" \
+            -input=false \
+            -auto-approve
+        env:
+          TF_IN_AUTOMATION: true
+
+      # ---------------------------------------------------------------
+      # Push updated Terraform state back to the terraform-state branch.
+      # This ensures the next pipeline run has the latest state.
+      #
+      # We use a separate worktree to avoid messing with the main checkout.
+      # The GITHUB_TOKEN is used for authentication (available automatically).
+      # ---------------------------------------------------------------
+      - name: Save Terraform state
+        run: |
+          # Configure git for the commit
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Create a temporary worktree for the state branch
+          git fetch origin terraform-state --depth=1
+          git worktree add /tmp/tf-state origin/terraform-state
+
+          # Copy the updated state file
+          cp terraform/terraform.tfstate /tmp/tf-state/terraform.tfstate
+
+          # Commit and push if there are changes
+          cd /tmp/tf-state
+          if git diff --quiet; then
+            echo "No state changes to commit"
+          else
+            git add terraform.tfstate
+            git commit -m "chore: update terraform state [skip ci]"
+            git push origin HEAD:terraform-state
+            echo "✓ State pushed to terraform-state branch"
+          fi
+
+          # Clean up worktree
+          cd -
+          git worktree remove /tmp/tf-state
+
+      # ---------------------------------------------------------------
+      # Verify the deployment is healthy
+      # ---------------------------------------------------------------
+      - name: Verify deployment
+        run: |
+          echo "=== Terraform Outputs ==="
+          cd terraform && terraform output
+
+          echo ""
+          echo "=== Health Check ==="
+          APP_URL="https://github-action-demo-86d1d2ddtrial.cfapps.ap21.hana.ondemand.com"
+          
+          # Wait a moment for the app to stabilize
+          sleep 10
+
+          # Check health endpoint
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$APP_URL/actuator/health" || true)
+          echo "Health endpoint status: $HTTP_STATUS"
+
+          # Check the hello endpoint
+          RESPONSE=$(curl -s "$APP_URL/api/hello" || true)
+          echo "Hello endpoint response: $RESPONSE"
+
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo ""
+            echo "✓ Deployment successful!"
+            echo "  App URL: $APP_URL"
+          else
+            echo ""
+            echo "⚠ Health check returned $HTTP_STATUS — app may still be starting"
+          fi
