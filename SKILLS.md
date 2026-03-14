@@ -70,22 +70,30 @@ and deploying it to **Cloud Foundry** (SAP BTP) using **Terraform** for infrastr
 - [x] Confirm CF API endpoint: https://api.cf.ap21.hana.ondemand.com
 
 ### Local Tools
+- [x] Cloud Foundry CLI v8 (installed — `cf version 8.18.0`)
 - [ ] Java 21 (`brew install openjdk@21`)
 - [ ] Maven (`brew install maven`)
-- [ ] Cloud Foundry CLI v8 (`brew install cloudfoundry/tap/cf-cli@8`)
 - [ ] Terraform (`brew install terraform`)
 
-### GitHub Repository Secrets (configure before Phase 3)
-- `CF_API_ENDPOINT` — SAP BTP CF API endpoint
-- `CF_USERNAME` — SAP BTP email/user ID
+### GitHub Repository Secrets (configured)
+- `CF_API_ENDPOINT` — `https://api.cf.ap21.hana.ondemand.com`
+- `CF_USERNAME` — email address (`ankitkrsingh2012@gmail.com`, NOT the P-number)
 - `CF_PASSWORD` — SAP BTP password
 - `CF_ORG` — `86d1d2ddtrial`
 - `CF_SPACE` — `dev`
 
+### CF Authentication Notes
+- **IDP Origin:** `sap.ids` (SAP ID Service — the default identity provider)
+- **Username:** Must be the email address, not the SAP user ID (P2011999649)
+- **Auth command:** `cf auth "<email>" "<password>" --origin sap.ids`
+- **App URL:** https://github-action-demo-86d1d2ddtrial.cfapps.ap21.hana.ondemand.com
+
 ## Current Status
 
-- **Active Phase:** Phase 3 — Manual CF Deploy Workflow
-- **Active Branch:** `feature/03-manual-cf-deploy`
-- **Completed Phases:** Phase 1 (Spring Boot App), Phase 2 (Basic CI Workflow)
-- **Blockers:** GitHub Secrets need to be configured before testing deploy
+- **Active Phase:** Phase 3 complete — ready for Phase 4
+- **Active Branch:** `main`
+- **Completed Phases:** Phase 1 (Spring Boot App), Phase 2 (Basic CI Workflow), Phase 3 (Manual CF Deploy)
+- **Deployed App:** https://github-action-demo-86d1d2ddtrial.cfapps.ap21.hana.ondemand.com/api/hello
+- **Blockers:** None
+- **Next:** Phase 4 — Terraform CF Infrastructure
 - **Last updated:** 2026-03-14
