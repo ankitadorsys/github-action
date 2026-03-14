@@ -94,37 +94,17 @@ jobs:
           sudo tar -xzf cf-cli.tgz -C /usr/local/bin
           cf --version
 
-      # Debug: Show CF API info to verify identity providers
-      - name: Debug — CF API info
-        run: |
-          curl -s "$CF_API_ENDPOINT" | python3 -m json.tool || true
-          echo "---"
-          curl -s "$(echo $CF_API_ENDPOINT | sed 's|api.cf|login.cf|')/info" | python3 -m json.tool || true
-
       # Log in to Cloud Foundry using secrets.
       # CF_PASSWORD is set as step-level env var to prevent shell
-      # interpretation of special characters.
-      # SAP BTP trial has two IDPs — the "alternative" one uses origin "sap.default".
-      # We try multiple origins to find the one that works.
+      # interpretation of special characters in the password.
+      # --origin sap.ids tells CF to use SAP ID Service (the default IDP).
+      # CF_USERNAME must be the email address, not the SAP user ID (P-number).
       - name: Log in to Cloud Foundry
         env:
           CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
         run: |
           cf api "$CF_API_ENDPOINT"
-
-          echo "=== Trying origin: sap.default ==="
-          if cf auth "${{ secrets.CF_USERNAME }}" "$CF_PASSWORD" --origin sap.default 2>/dev/null; then
-            echo "Success with sap.default"
-          else
-            echo "=== Trying origin: sap.ids ==="
-            if cf auth "${{ secrets.CF_USERNAME }}" "$CF_PASSWORD" --origin sap.ids 2>/dev/null; then
-              echo "Success with sap.ids"
-            else
-              echo "=== Trying without origin ==="
-              cf auth "${{ secrets.CF_USERNAME }}" "$CF_PASSWORD"
-            fi
-          fi
-
+          cf auth "${{ secrets.CF_USERNAME }}" "$CF_PASSWORD" --origin sap.ids
           cf target -o "$CF_ORG" -s "$CF_SPACE"
 
       # Deploy the application using the manifest.yml.
