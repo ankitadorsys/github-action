@@ -104,13 +104,27 @@ jobs:
       # Log in to Cloud Foundry using secrets.
       # CF_PASSWORD is set as step-level env var to prevent shell
       # interpretation of special characters.
-      # We try without --origin first (uses default IDP).
+      # SAP BTP trial has two IDPs — the "alternative" one uses origin "sap.default".
+      # We try multiple origins to find the one that works.
       - name: Log in to Cloud Foundry
         env:
           CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
         run: |
           cf api "$CF_API_ENDPOINT"
-          cf auth "${{ secrets.CF_USERNAME }}" "$CF_PASSWORD"
+
+          echo "=== Trying origin: sap.default ==="
+          if cf auth "${{ secrets.CF_USERNAME }}" "$CF_PASSWORD" --origin sap.default 2>/dev/null; then
+            echo "Success with sap.default"
+          else
+            echo "=== Trying origin: sap.ids ==="
+            if cf auth "${{ secrets.CF_USERNAME }}" "$CF_PASSWORD" --origin sap.ids 2>/dev/null; then
+              echo "Success with sap.ids"
+            else
+              echo "=== Trying without origin ==="
+              cf auth "${{ secrets.CF_USERNAME }}" "$CF_PASSWORD"
+            fi
+          fi
+
           cf target -o "$CF_ORG" -s "$CF_SPACE"
 
       # Deploy the application using the manifest.yml.
