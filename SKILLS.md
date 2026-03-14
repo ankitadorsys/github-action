@@ -61,6 +61,7 @@ and deploying it to **Cloud Foundry** (SAP BTP) using **Terraform** for infrastr
 | Build tool                    | Maven             | Most common for Spring Boot, simpler for learning |
 | Deployment approach           | Phased (6 phases) | Incremental learning, simple to advanced          |
 | Context management            | SKILLS.md + PLAN.md | Persistent context across AI sessions           |
+| Terraform state in CI         | Dedicated `terraform-state` branch | Simple, no extra services, good for learning |
 
 ## Prerequisites & External Setup
 
@@ -90,11 +91,12 @@ and deploying it to **Cloud Foundry** (SAP BTP) using **Terraform** for infrastr
 
 ## Current Status
 
-- **Active Phase:** Phase 4 complete — ready for Phase 5
+- **Active Phase:** Phase 5 complete — ready for Phase 6
 - **Active Branch:** `main`
-- **Completed Phases:** Phase 1 (Spring Boot App), Phase 2 (Basic CI), Phase 3 (Manual CF Deploy), Phase 4 (Terraform CF Infra)
+- **Completed Phases:** Phase 1 (Spring Boot App), Phase 2 (Basic CI), Phase 3 (Manual CF Deploy), Phase 4 (Terraform CF Infra), Phase 5 (Full CI/CD Pipeline)
 - **Deployed App:** https://github-action-demo-86d1d2ddtrial.cfapps.ap21.hana.ondemand.com/api/hello
-- **Terraform:** App + route managed by Terraform (state is local, gitignored)
+- **Terraform:** App + route managed by Terraform; state on `terraform-state` branch (updated by CI/CD pipeline)
+- **CI/CD Pipeline:** `.github/workflows/pipeline.yml` — build on push/PR, terraform plan on PR (posted as comment), terraform apply + deploy on merge to main
 - **Blockers:** None
-- **Next:** Phase 5 — Full CI/CD Pipeline (Terraform plan on PR, apply on merge)
+- **Next:** Phase 6 — Advanced Workflows (reusable workflows, matrix builds, status badges, branch protection)
 - **Last updated:** 2026-03-14
