@@ -90,10 +90,11 @@ and deploying it to **Cloud Foundry** (SAP BTP) using **Terraform** for infrastr
 
 ## Current Status
 
-- **Active Phase:** Phase 3 complete — ready for Phase 4
+- **Active Phase:** Phase 4 complete — ready for Phase 5
 - **Active Branch:** `main`
-- **Completed Phases:** Phase 1 (Spring Boot App), Phase 2 (Basic CI Workflow), Phase 3 (Manual CF Deploy)
+- **Completed Phases:** Phase 1 (Spring Boot App), Phase 2 (Basic CI), Phase 3 (Manual CF Deploy), Phase 4 (Terraform CF Infra)
 - **Deployed App:** https://github-action-demo-86d1d2ddtrial.cfapps.ap21.hana.ondemand.com/api/hello
+- **Terraform:** App + route managed by Terraform (state is local, gitignored)
 - **Blockers:** None
-- **Next:** Phase 4 — Terraform CF Infrastructure
+- **Next:** Phase 5 — Full CI/CD Pipeline (Terraform plan on PR, apply on merge)
 - **Last updated:** 2026-03-14
