@@ -5,8 +5,9 @@
 
 ## Project Overview
 
-A learning project to master **GitHub Actions** by building a Spring Boot application
-and deploying it to **Cloud Foundry** (SAP BTP) using **Terraform** for infrastructure.
+A learning project that started with mastering **GitHub Actions** (CI/CD pipeline
+with Terraform + Cloud Foundry) and is now extending into a **full-stack Task Manager**
+with Spring Boot, Angular, OpenAPI, and Keycloak authentication.
 
 **Repository:** https://github.com/ankitadorsys/github-action
 
@@ -16,9 +17,13 @@ and deploying it to **Cloud Foundry** (SAP BTP) using **Terraform** for infrastr
 |-------------------|---------------------------------------------|
 | Language          | Java 17 (compile target) / 21 (runtime)     |
 | Framework         | Spring Boot 3.x                             |
-| Build Tool        | Maven                                       |
+| Frontend          | Angular 17+ (standalone components)         |
+| API Docs          | OpenAPI 3.0 (springdoc-openapi)             |
+| Auth/IdP          | Keycloak (Docker) via OAuth2/OIDC           |
+| Build Tool        | Maven (backend), Angular CLI (frontend)     |
 | CI/CD             | GitHub Actions                              |
 | IaC               | Terraform (Cloud Foundry provider)          |
+| Database          | H2 (dev) → PostgreSQL (later)              |
 | Deployment Target | Cloud Foundry on SAP BTP (free trial tier)  |
 
 ## SAP BTP Cloud Foundry Details
@@ -59,9 +64,15 @@ and deploying it to **Cloud Foundry** (SAP BTP) using **Terraform** for infrastr
 | CF provider                   | SAP BTP free tier | Free, real CF environment, good Terraform support |
 | Java version                  | 17 (compile) / 21 (runtime) | 17 for matrix compat, 21 JRE in CF |
 | Build tool                    | Maven             | Most common for Spring Boot, simpler for learning |
-| Deployment approach           | Phased (6 phases) | Incremental learning, simple to advanced          |
+| Deployment approach           | Phased            | Incremental learning, simple to advanced          |
 | Context management            | SKILLS.md + PLAN.md | Persistent context across AI sessions           |
 | Terraform state in CI         | Dedicated `terraform-state` branch | Simple, no extra services, good for learning |
+| Identity provider             | Keycloak (Docker) | Industry standard, open-source, great Spring integration |
+| Auth protocol                 | OAuth2/OIDC + PKCE | Standard, secure SPA flow via Keycloak          |
+| Frontend framework            | Angular           | Enterprise standard, good with Spring Boot       |
+| API documentation             | springdoc-openapi | Auto-generates OpenAPI 3.0 spec from code        |
+| Frontend auth library         | angular-oauth2-oidc | Well-maintained, supports PKCE                 |
+| App architecture              | API first, then auth, then UI | Secure from the start, no retrofit |
 
 ## Prerequisites & External Setup
 
