@@ -14,7 +14,7 @@ and deploying it to **Cloud Foundry** (SAP BTP) using **Terraform** for infrastr
 
 | Component         | Choice                                      |
 |-------------------|---------------------------------------------|
-| Language          | Java 21                                     |
+| Language          | Java 17 (compile target) / 21 (runtime)     |
 | Framework         | Spring Boot 3.x                             |
 | Build Tool        | Maven                                       |
 | CI/CD             | GitHub Actions                              |
@@ -57,7 +57,7 @@ and deploying it to **Cloud Foundry** (SAP BTP) using **Terraform** for infrastr
 | Decision                      | Choice            | Reason                                           |
 |-------------------------------|-------------------|--------------------------------------------------|
 | CF provider                   | SAP BTP free tier | Free, real CF environment, good Terraform support |
-| Java version                  | 21                | Latest LTS                                        |
+| Java version                  | 17 (compile) / 21 (runtime) | 17 for matrix compat, 21 JRE in CF |
 | Build tool                    | Maven             | Most common for Spring Boot, simpler for learning |
 | Deployment approach           | Phased (6 phases) | Incremental learning, simple to advanced          |
 | Context management            | SKILLS.md + PLAN.md | Persistent context across AI sessions           |
@@ -91,12 +91,12 @@ and deploying it to **Cloud Foundry** (SAP BTP) using **Terraform** for infrastr
 
 ## Current Status
 
-- **Active Phase:** Phase 5 complete — ready for Phase 6
+- **Active Phase:** All 6 phases COMPLETE
 - **Active Branch:** `main`
-- **Completed Phases:** Phase 1 (Spring Boot App), Phase 2 (Basic CI), Phase 3 (Manual CF Deploy), Phase 4 (Terraform CF Infra), Phase 5 (Full CI/CD Pipeline)
+- **Completed Phases:** Phase 1 (Spring Boot App), Phase 2 (Basic CI), Phase 3 (Manual CF Deploy), Phase 4 (Terraform CF Infra), Phase 5 (Full CI/CD Pipeline), Phase 6 (Advanced Workflows)
 - **Deployed App:** https://github-action-demo-86d1d2ddtrial.cfapps.ap21.hana.ondemand.com/api/hello
 - **Terraform:** App + route managed by Terraform; state on `terraform-state` branch (updated by CI/CD pipeline)
-- **CI/CD Pipeline:** `.github/workflows/pipeline.yml` — build on push/PR, terraform plan on PR (posted as comment), terraform apply + deploy on merge to main
+- **CI/CD Pipeline:** `.github/workflows/pipeline.yml` — matrix build (Java 17+21), reusable workflows, terraform plan on PR, terraform apply + deploy on merge to main
 - **Blockers:** None
-- **Next:** Phase 6 — Advanced Workflows (reusable workflows, matrix builds, status badges, branch protection)
+- **Next:** Project complete! All 6 phases done. Possible extensions: caching, notifications, environments with approval gates, blue-green deploys.
 - **Last updated:** 2026-03-14

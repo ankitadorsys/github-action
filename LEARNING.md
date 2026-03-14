@@ -1281,6 +1281,107 @@ pipeline.yml > push/PR: build+plan+deploy  pipeline.yml ──> everything
 - `deploy.yml` used `cf push` (imperative) — we replaced that with
   Terraform (declarative) in Phase 4-5. No reason to keep the old way.
 
+### Bug Fix: Java Version Compatibility (Real-World Debugging)
+
+This is where things got interesting. Our matrix build **failed** on the first
+push, and fixing it taught us an important lesson about compile targets vs
+runtime versions.
+
+**The Bug:**
+
+```
+Matrix build: Java 17 job FAILED
+Error: Fatal error compiling: error: release version 21 not supported
+
+pom.xml had:  <java.version>21</java.version>
+Matrix had:   java-version: ['17', '21']
+```
+
+**Why it failed:**
+
+```
+Java bytecode versions are NOT backwards compatible for COMPILATION:
+
+  Java 21 JDK can compile:  Java 17, 18, 19, 20, 21 targets   (lower = OK)
+  Java 17 JDK can compile:  Java 11, 12, 13, 14, 15, 16, 17   (21 = NOPE)
+
+  pom.xml says <java.version>21</java.version>
+  = "produce bytecode that requires Java 21 to run"
+  = Java 17 JDK can't do that — it doesn't know what Java 21 bytecode looks like!
+```
+
+**The fix (two-part):**
+
+```
+PART 1: Change compile target to Java 17 (the LOWER version)
+  pom.xml: <java.version>17</java.version>
+
+  Now BOTH Java 17 and 21 can compile it:
+    Java 17 JDK → compiles Java 17 bytecode  ✓
+    Java 21 JDK → compiles Java 17 bytecode  ✓ (higher can always compile lower)
+
+PART 2: Keep CF runtime at Java 21 JRE
+  manifest.yml:       JBP_CONFIG_OPEN_JDK_JRE: '{ jre: { version: 21.+ } }'
+  cf-resources.tf:    JBP_CONFIG_OPEN_JDK_JRE = "{ jre: { version: 21.+ } }"
+
+  Java 17 bytecode runs fine on Java 21 JRE (forward compatible).
+```
+
+**Why we initially got a CF CRASH:**
+
+```
+First attempt: changed BOTH compile target AND runtime to 17
+  pom.xml:          17  (correct)
+  manifest.yml:     17  (WRONG — caused crash)
+  cf-resources.tf:  17  (WRONG — caused crash)
+
+The SAP BTP Java buildpack didn't have Java 17 JRE available,
+so the app crashed on startup.
+
+Fix: keep runtime at 21, only change compile target to 17.
+```
+
+**The key lesson:**
+
+```
+COMPILE TARGET vs RUNTIME — they are DIFFERENT things!
+
+  Compile target (pom.xml):     "What bytecode version to produce"
+                                 → Set to LOWEST version you test against
+                                 → Our case: Java 17
+
+  Runtime JRE (CF/manifest):    "What JVM runs the app in production"
+                                 → Set to whatever's available and stable
+                                 → Our case: Java 21
+
+  Rule: Runtime version >= Compile target version
+        Java 21 JRE can run Java 17 bytecode  ✓
+        Java 17 JRE can run Java 21 bytecode  ✗
+```
+
+**Timeline of the debugging process:**
+
+```
+1. Push Phase 6 branch with matrix [17, 21] + pom.xml targeting 21
+   → Java 17 build FAILS: "release version 21 not supported"
+   → Java 21 build passes
+   → fail-fast: false kept Java 21 running (good!)
+
+2. Fix: change pom.xml to <java.version>17</java.version>
+   → Push to feature branch
+   → Both Java 17 and 21 builds PASS
+
+3. Merge to main — deploy triggers
+   → Also changed CF JRE from 21 to 17 (mistake!)
+   → Terraform Apply: app CRASHED
+   → "Instance 0 failed with state CRASHED"
+
+4. Fix: revert CF JRE back to 21.+
+   → Push directly to main
+   → Terraform Apply: success
+   → Health check: 200 OK
+```
+
 ### What We Learned in Phase 6
 
 - Reusable workflows (`workflow_call`) — define once, call many times
@@ -1291,6 +1392,9 @@ pipeline.yml > push/PR: build+plan+deploy  pipeline.yml ──> everything
 - Composite actions vs reusable workflows — when to use which
 - Cleaning up redundant workflows to avoid duplicate runs
 - `GITHUB_OUTPUT` for passing data between steps
+- **Compile target vs runtime version** — set compile target to the lowest
+  version in your matrix, but keep runtime at whatever's available in production
+- **Debugging in CI/CD is iterative** — push, check logs, fix, push again
 
 ---
 
