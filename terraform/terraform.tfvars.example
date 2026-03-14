@@ -1,0 +1,25 @@
+# =====================================================================
+# terraform.tfvars.example — Example Variable Values
+# =====================================================================
+# Copy this file to terraform.tfvars and fill in your actual values:
+#
+#   cp terraform.tfvars.example terraform.tfvars
+#
+# IMPORTANT: terraform.tfvars is gitignored — it contains secrets!
+# Never commit your actual .tfvars file to version control.
+# =====================================================================
+
+# --- CF Connection (required — no defaults for sensitive values) ---
+cf_username = "your-email@example.com"
+cf_password = "your-sap-btp-password"
+
+# --- CF Target (optional — defaults are set for SAP BTP trial) ---
+# cf_api_endpoint = "https://api.cf.ap21.hana.ondemand.com"
+# cf_org_name     = "86d1d2ddtrial"
+# cf_space_name   = "dev"
+
+# --- Application (optional — defaults match the current app) ---
+# app_name      = "github-action-demo"
+# app_memory    = 768
+# app_instances = 1
+# app_hostname  = "github-action-demo-86d1d2ddtrial"
