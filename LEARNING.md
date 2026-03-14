@@ -112,7 +112,7 @@ Maven is the build tool. `pom.xml` is like a recipe that says:
 ```
 Key parts:
 ├── <parent> spring-boot-starter-parent    # Inherits Spring Boot defaults
-├── <properties> java.version = 21         # Use Java 21
+├── <properties> java.version = 17         # Compile target Java 17 (changed from 21 in Phase 6)
 ├── <dependencies>
 │   ├── spring-boot-starter-web            # Makes it a web app (HTTP server)
 │   ├── spring-boot-starter-actuator       # Adds health check endpoints
@@ -249,8 +249,12 @@ automatically runs your workflows (build, test, deploy, etc.) on their servers.
 
 ### Key Concepts
 
+> **Note:** In Phase 2, we created `ci.yml` as our first workflow. It was later
+> **deleted in Phase 6** and replaced by `pipeline.yml` + `reusable-build.yml`.
+> The concepts below still apply — only the file name changed.
+
 ```
-WORKFLOW (ci.yml)
+WORKFLOW (ci.yml → later replaced by pipeline.yml in Phase 6)
 ├── TRIGGER: When does it run? (on push, on PR, on schedule, etc.)
 ├── JOB: A set of steps that run on one machine
 │   ├── RUNNER: The machine (ubuntu-latest = free Linux VM)
@@ -259,7 +263,7 @@ WORKFLOW (ci.yml)
 │       └── RUN: Shell command (mvn clean verify)
 ```
 
-### File: `.github/workflows/ci.yml`
+### File: `.github/workflows/ci.yml` (deleted in Phase 6 — replaced by `pipeline.yml`)
 
 ```
 Location matters! GitHub only recognizes workflows in .github/workflows/
@@ -932,8 +936,8 @@ BEFORE (Phase 2-3):                    AFTER (Phase 5):
 └──────────────────┘                   no manual steps needed.
 ```
 
-Note: `ci.yml` and `deploy.yml` still exist and work. They're not deleted
-— just superseded by `pipeline.yml`. We may clean them up in Phase 6.
+Note: `ci.yml` and `deploy.yml` were superseded by `pipeline.yml`.
+They were **deleted in Phase 6** when we refactored to reusable workflows.
 
 ### What We Learned in Phase 5
 

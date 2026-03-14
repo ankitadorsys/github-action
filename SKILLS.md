@@ -102,12 +102,13 @@ with Spring Boot, Angular, OpenAPI, and Keycloak authentication.
 
 ## Current Status
 
-- **Active Phase:** All 6 phases COMPLETE
-- **Active Branch:** `main`
-- **Completed Phases:** Phase 1 (Spring Boot App), Phase 2 (Basic CI), Phase 3 (Manual CF Deploy), Phase 4 (Terraform CF Infra), Phase 5 (Full CI/CD Pipeline), Phase 6 (Advanced Workflows)
+- **Active Phase:** Phase 7 — Task CRUD API + OpenAPI (not yet started)
+- **Active Branch:** `main` (will create `feature/07-task-crud-api`)
+- **Part A (Phases 1-6):** COMPLETE — CI/CD pipeline with Terraform + CF deployed
+- **Part B (Phases 7-12):** IN PROGRESS — Full-stack Task Manager
 - **Deployed App:** https://github-action-demo-86d1d2ddtrial.cfapps.ap21.hana.ondemand.com/api/hello
 - **Terraform:** App + route managed by Terraform; state on `terraform-state` branch (updated by CI/CD pipeline)
 - **CI/CD Pipeline:** `.github/workflows/pipeline.yml` — matrix build (Java 17+21), reusable workflows, terraform plan on PR, terraform apply + deploy on merge to main
 - **Blockers:** None
-- **Next:** Project complete! All 6 phases done. Possible extensions: caching, notifications, environments with approval gates, blue-green deploys.
+- **Next:** Phase 7 — Add Task entity, CRUD API, springdoc-openapi, H2 database
 - **Last updated:** 2026-03-14
