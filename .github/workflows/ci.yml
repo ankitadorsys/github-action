@@ -1,0 +1,75 @@
+# =====================================================================
+# CI Workflow — Build & Test
+# =====================================================================
+# This workflow runs on every push and pull request.
+# It compiles the Spring Boot app and runs all unit tests.
+# =====================================================================
+
+# 1. NAME
+# This is the display name shown in the GitHub Actions tab.
+name: CI — Build & Test
+
+# 2. TRIGGERS (when does this workflow run?)
+on:
+  # Run when code is pushed to any branch
+  push:
+    branches:
+      - main
+      - 'feature/**'
+
+  # Run when a pull request is opened/updated targeting main
+  pull_request:
+    branches:
+      - main
+
+# 3. JOBS (what work to perform)
+jobs:
+
+  # Job ID — must be unique within this workflow
+  build-and-test:
+
+    # The machine to run on. ubuntu-latest is a free GitHub-hosted runner.
+    # It comes with Java, Maven, Git, Docker, etc. pre-installed.
+    runs-on: ubuntu-latest
+
+    # Steps run sequentially inside this job
+    steps:
+
+      # Step 1: Check out the repository code
+      # Without this, the runner has an empty workspace.
+      # actions/checkout is a GitHub-maintained action.
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Install Java 21
+      # The runner has Java pre-installed, but we want a specific version.
+      # actions/setup-java configures the JDK and also sets up Maven caching.
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'       # Eclipse Temurin is a popular free JDK
+          cache: 'maven'                # Caches ~/.m2/repository between runs
+
+      # Step 3: Build the project and run tests
+      # `mvn clean verify` does:
+      #   - clean: delete previous build output
+      #   - compile: compile Java source
+      #   - test: run unit tests
+      #   - package: create the JAR file
+      #   - verify: run integration tests (if any)
+      # The `-B` flag means "batch mode" (no interactive prompts).
+      # `--no-transfer-progress` suppresses download progress bars (cleaner logs).
+      - name: Build and test with Maven
+        run: mvn clean verify -B --no-transfer-progress
+
+      # Step 4: Upload the built JAR as an artifact
+      # This makes the JAR available for download from the GitHub Actions UI
+      # and for other jobs to consume (useful in Phase 5).
+      - name: Upload build artifact
+        if: success() && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-jar
+          path: target/*.jar
+          retention-days: 7             # Auto-delete after 7 days
