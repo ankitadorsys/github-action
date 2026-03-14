@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import com.example.demo.api.model.CommentRequest;
 import com.example.demo.api.model.CommentResponse;
+import com.example.demo.config.TestSecurityConfig;
 import com.example.demo.exception.GlobalExceptionHandler;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.exception.TaskNotFoundException;
@@ -9,10 +10,12 @@ import com.example.demo.service.CommentService;
 import tools.jackson.databind.ObjectMapper;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -23,10 +26,12 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.BDDMockito.willThrow;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest({CommentController.class, GlobalExceptionHandler.class})
+@Import(TestSecurityConfig.class)
 @DisplayName("CommentController")
 class CommentControllerTest {
 
@@ -57,7 +62,8 @@ class CommentControllerTest {
     void getCommentsByTaskId_returnsList() throws Exception {
         given(commentService.getCommentsByTaskId(1L)).willReturn(List.of(sampleResponse()));
 
-        mockMvc.perform(get("/api/tasks/1/comments"))
+        mockMvc.perform(get("/api/tasks/1/comments")
+                        .with(jwt().jwt(j -> j.claim("realm_access", Map.of("roles", List.of("ROLE_USER"))))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].content").value("Great progress!"))
@@ -70,7 +76,8 @@ class CommentControllerTest {
         given(commentService.getCommentsByTaskId(99L))
                 .willThrow(new TaskNotFoundException(99L));
 
-        mockMvc.perform(get("/api/tasks/99/comments"))
+        mockMvc.perform(get("/api/tasks/99/comments")
+                        .with(jwt().jwt(j -> j.claim("realm_access", Map.of("roles", List.of("ROLE_USER"))))))
                 .andExpect(status().isNotFound());
     }
 
@@ -81,6 +88,7 @@ class CommentControllerTest {
                 .willReturn(sampleResponse());
 
         mockMvc.perform(post("/api/tasks/1/comments")
+                        .with(jwt().jwt(j -> j.claim("realm_access", Map.of("roles", List.of("ROLE_USER")))))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(sampleRequest())))
                 .andExpect(status().isCreated())
@@ -95,6 +103,7 @@ class CommentControllerTest {
                 .willThrow(new TaskNotFoundException(99L));
 
         mockMvc.perform(post("/api/tasks/99/comments")
+                        .with(jwt().jwt(j -> j.claim("realm_access", Map.of("roles", List.of("ROLE_USER")))))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(sampleRequest())))
                 .andExpect(status().isNotFound());
@@ -105,7 +114,8 @@ class CommentControllerTest {
     void deleteComment_returnsNoContent() throws Exception {
         willDoNothing().given(commentService).deleteComment(1L);
 
-        mockMvc.perform(delete("/api/comments/1"))
+        mockMvc.perform(delete("/api/comments/1")
+                        .with(jwt().jwt(j -> j.claim("realm_access", Map.of("roles", List.of("ROLE_USER"))))))
                 .andExpect(status().isNoContent());
     }
 
@@ -115,7 +125,8 @@ class CommentControllerTest {
         willThrow(new ResourceNotFoundException("Comment", 99L))
                 .given(commentService).deleteComment(99L);
 
-        mockMvc.perform(delete("/api/comments/99"))
+        mockMvc.perform(delete("/api/comments/99")
+                        .with(jwt().jwt(j -> j.claim("realm_access", Map.of("roles", List.of("ROLE_USER"))))))
                 .andExpect(status().isNotFound());
     }
 }

@@ -1,8 +1,8 @@
 package com.example.demo.service;
 
+import com.example.demo.api.model.TaskPriority;
 import com.example.demo.api.model.TaskRequest;
 import com.example.demo.api.model.TaskResponse;
-import com.example.demo.api.model.TaskPriority;
 import com.example.demo.api.model.TaskStatus;
 import com.example.demo.exception.ResourceNotFoundException;
 import com.example.demo.exception.TaskNotFoundException;
@@ -18,6 +18,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,24 +32,30 @@ public class TaskService {
     private final TagRepository tagRepository;
     private final TaskMapper taskMapper;
 
-    public List<TaskResponse> getAllTasks() {
-        return taskRepository.findAll().stream()
+    public List<TaskResponse> getAllTasks(String userId, boolean isAdmin) {
+        List<Task> tasks = isAdmin
+                ? taskRepository.findAll()
+                : taskRepository.findByUserId(userId);
+        return tasks.stream()
                 .map(taskMapper::toResponse)
                 .toList();
     }
 
-    public TaskResponse getTaskById(Long id) {
-        return taskMapper.toResponse(findTaskOrThrow(id));
+    public TaskResponse getTaskById(Long id, String userId, boolean isAdmin) {
+        Task task = findTaskOrThrow(id);
+        verifyOwnership(task, userId, isAdmin);
+        return taskMapper.toResponse(task);
     }
 
     @Transactional
-    public TaskResponse createTask(TaskRequest request) {
+    public TaskResponse createTask(TaskRequest request, String userId) {
         Task task = Task.builder()
                 .title(request.getTitle())
                 .description(request.getDescription())
                 .status(request.getStatus() != null ? request.getStatus() : TaskStatus.TODO)
                 .priority(request.getPriority() != null ? request.getPriority() : TaskPriority.MEDIUM)
                 .dueDate(request.getDueDate())
+                .userId(userId)
                 .build();
 
         if (request.getCategoryId() != null) {
@@ -66,8 +73,9 @@ public class TaskService {
     }
 
     @Transactional
-    public TaskResponse updateTask(Long id, TaskRequest request) {
+    public TaskResponse updateTask(Long id, TaskRequest request, String userId, boolean isAdmin) {
         Task task = findTaskOrThrow(id);
+        verifyOwnership(task, userId, isAdmin);
 
         task.setTitle(request.getTitle());
         task.setDescription(request.getDescription());
@@ -94,15 +102,20 @@ public class TaskService {
     }
 
     @Transactional
-    public void deleteTask(Long id) {
-        if (!taskRepository.existsById(id)) {
-            throw new TaskNotFoundException(id);
-        }
+    public void deleteTask(Long id, String userId, boolean isAdmin) {
+        Task task = findTaskOrThrow(id);
+        verifyOwnership(task, userId, isAdmin);
         taskRepository.deleteById(id);
     }
 
     private Task findTaskOrThrow(Long id) {
         return taskRepository.findById(id)
                 .orElseThrow(() -> new TaskNotFoundException(id));
+    }
+
+    private void verifyOwnership(Task task, String userId, boolean isAdmin) {
+        if (!isAdmin && !userId.equals(task.getUserId())) {
+            throw new AccessDeniedException("You do not have permission to access this task");
+        }
     }
 }

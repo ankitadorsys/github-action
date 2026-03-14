@@ -60,6 +60,9 @@ public class Task {
 
     private LocalDate dueDate;
 
+    @Column(name = "user_id")
+    private String userId;
+
     @Column(nullable = false, updatable = false)
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();

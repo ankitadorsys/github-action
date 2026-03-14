@@ -10,6 +10,9 @@ servers:
   - url: http://localhost:8080
     description: Local development
 
+security:
+  - bearerAuth: []
+
 tags:
   - name: Tasks
     description: Task CRUD operations
@@ -32,6 +35,7 @@ paths:
         - Hello
       summary: Greeting endpoint
       operationId: sayHello
+      security: []
       responses:
         "200":
           description: Greeting message
@@ -59,6 +63,10 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/TaskResponse"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Insufficient permissions
 
     post:
       tags:
@@ -84,6 +92,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ValidationError"
+        "401":
+          description: Not authenticated
+        "403":
+          description: Insufficient permissions
 
   /api/tasks/{id}:
     get:
@@ -577,6 +589,9 @@ components:
         dueDate:
           type: string
           format: date
+        userId:
+          type: string
+          description: Keycloak subject ID of the task owner
         createdAt:
           type: string
           format: date-time
@@ -711,3 +726,10 @@ components:
           type: object
           additionalProperties:
             type: string
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Keycloak JWT access token
