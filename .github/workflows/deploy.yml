@@ -1,0 +1,121 @@
+# =====================================================================
+# Deploy Workflow — Manual Cloud Foundry Deployment
+# =====================================================================
+# This workflow deploys the Spring Boot app to SAP BTP Cloud Foundry.
+# It is triggered MANUALLY via the GitHub Actions UI (workflow_dispatch).
+# =====================================================================
+
+name: Deploy to Cloud Foundry
+
+# 1. TRIGGER — workflow_dispatch
+# Unlike push/PR triggers, this adds a "Run workflow" button in the
+# GitHub Actions tab. You click it manually to deploy.
+# The `inputs` block lets you pass parameters when triggering.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+
+# 2. ENVIRONMENT VARIABLES
+# These are available to ALL jobs and steps in this workflow.
+# We reference GitHub Secrets here — they are encrypted values
+# stored in your repo settings, never exposed in logs.
+env:
+  CF_API_ENDPOINT: ${{ secrets.CF_API_ENDPOINT }}
+  CF_ORG: ${{ secrets.CF_ORG }}
+  CF_SPACE: ${{ secrets.CF_SPACE }}
+
+jobs:
+
+  # ---------------------------------------------------------------
+  # Job 1: Build the application
+  # ---------------------------------------------------------------
+  build:
+    name: Build Application
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      # Build the JAR but skip tests (we already tested in CI workflow).
+      # -DskipTests skips test execution but still compiles test classes.
+      - name: Build with Maven
+        run: mvn clean package -B --no-transfer-progress -DskipTests
+
+      # Upload the JAR so the deploy job can download it.
+      # This avoids rebuilding in the deploy job.
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-jar
+          path: target/github-action-demo-0.0.1-SNAPSHOT.jar
+
+  # ---------------------------------------------------------------
+  # Job 2: Deploy to Cloud Foundry
+  # ---------------------------------------------------------------
+  deploy:
+    name: Deploy to CF (${{ github.event.inputs.environment }})
+    runs-on: ubuntu-latest
+
+    # This job depends on the build job — it won't start until build succeeds.
+    needs: build
+
+    steps:
+      # We still need to checkout for manifest.yml (CF needs it).
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Download the JAR built in the previous job.
+      - name: Download JAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-jar
+          path: target/
+
+      # Install the Cloud Foundry CLI on the runner.
+      # The runner doesn't have it pre-installed, so we download it.
+      - name: Install CF CLI
+        run: |
+          wget -q "https://packages.cloudfoundry.org/stable?release=linux64-binary&version=v8&source=github" -O cf-cli.tgz
+          sudo tar -xzf cf-cli.tgz -C /usr/local/bin
+          cf --version
+
+      # Log in to Cloud Foundry using secrets.
+      # `cf login` authenticates and targets the correct org/space.
+      # The password comes from GitHub Secrets — it's masked in logs.
+      - name: Log in to Cloud Foundry
+        run: |
+          cf login \
+            -a "$CF_API_ENDPOINT" \
+            -u "${{ secrets.CF_USERNAME }}" \
+            -p "${{ secrets.CF_PASSWORD }}" \
+            -o "$CF_ORG" \
+            -s "$CF_SPACE"
+
+      # Deploy the application using the manifest.yml.
+      # `cf push` reads manifest.yml, uploads the JAR, and starts the app.
+      - name: Deploy application
+        run: cf push -f manifest.yml
+
+      # Show the app status and URL after deployment.
+      - name: Verify deployment
+        run: |
+          echo "=== Application Status ==="
+          cf app github-action-demo
+          echo ""
+          echo "=== Application Routes ==="
+          cf app github-action-demo | grep routes
