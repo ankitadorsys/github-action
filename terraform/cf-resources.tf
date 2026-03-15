@@ -89,6 +89,17 @@ resource "cloudfoundry_route" "frontend_route" {
   }
 }
 
+resource "cloudfoundry_route" "frontend_api_route" {
+  domain   = data.cloudfoundry_domain.apps.id
+  space    = data.cloudfoundry_space.space.id
+  hostname = var.frontend_app_hostname
+  path     = "api"
+
+  target {
+    app = cloudfoundry_app.app.id
+  }
+}
+
 resource "cloudfoundry_app" "frontend_app" {
   name      = var.frontend_app_name
   space     = data.cloudfoundry_space.space.id
