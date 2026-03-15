@@ -151,7 +151,7 @@ jobs:
         working-directory: terraform
         run: |
           mkdir -p ../backend/target
-          touch ../backend/target/${{ env.JAR_NAME }}
+          touch ../backend/target/backend-${{ github.sha }}.jar
           mkdir -p ../frontend/dist/frontend/browser
           touch ../frontend/dist/frontend/browser/index.html
           cp ../frontend/Staticfile ../frontend/dist/frontend/browser/Staticfile
@@ -161,6 +161,7 @@ jobs:
           terraform plan \
             -var="cf_username=${{ secrets.CF_USERNAME }}" \
             -var="cf_password=${{ secrets.CF_PASSWORD }}" \
+            -var="app_path=../backend/target/backend-${{ github.sha }}.jar" \
             -var="frontend_app_path=../frontend/dist/frontend/frontend-${{ github.sha }}.zip" \
             -input=false \
             -no-color \
@@ -253,6 +254,8 @@ jobs:
           ls -la backend/target/
           echo "JAR file: backend/target/${{ env.JAR_NAME }}"
           test -f "backend/target/${{ env.JAR_NAME }}" || { echo "ERROR: JAR not found!"; exit 1; }
+          cp "backend/target/${{ env.JAR_NAME }}" "backend/target/backend-${{ github.sha }}.jar"
+          echo "Versioned JAR: backend/target/backend-${{ github.sha }}.jar"
 
       - name: Restore Terraform state
         run: |
@@ -299,6 +302,7 @@ jobs:
           terraform apply \
             -var="cf_username=${{ secrets.CF_USERNAME }}" \
             -var="cf_password=${{ secrets.CF_PASSWORD }}" \
+            -var="app_path=../backend/target/backend-${{ github.sha }}.jar" \
             -var="frontend_app_path=../frontend/dist/frontend/frontend-${{ github.sha }}.zip" \
             -input=false \
             -auto-approve
