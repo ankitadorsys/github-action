@@ -155,11 +155,13 @@ jobs:
           mkdir -p ../frontend/dist/frontend/browser
           touch ../frontend/dist/frontend/browser/index.html
           cp ../frontend/Staticfile ../frontend/dist/frontend/browser/Staticfile
-          (cd ../frontend/dist/frontend/browser && zip -rq ../frontend.zip .)
+          rm -f ../frontend/dist/frontend/frontend-${{ github.sha }}.zip
+          (cd ../frontend/dist/frontend/browser && zip -rq ../frontend-${{ github.sha }}.zip .)
 
           terraform plan \
             -var="cf_username=${{ secrets.CF_USERNAME }}" \
             -var="cf_password=${{ secrets.CF_PASSWORD }}" \
+            -var="frontend_app_path=../frontend/dist/frontend/frontend-${{ github.sha }}.zip" \
             -input=false \
             -no-color \
             -detailed-exitcode \
@@ -279,13 +281,13 @@ jobs:
           npm ci
           npm run build -- --configuration production
           cp Staticfile dist/frontend/browser/Staticfile
-          rm -f dist/frontend/frontend.zip
-          (cd dist/frontend/browser && zip -rq ../frontend.zip .)
+          rm -f dist/frontend/frontend-${{ github.sha }}.zip
+          (cd dist/frontend/browser && zip -rq ../frontend-${{ github.sha }}.zip .)
 
       - name: Verify frontend build exists
         run: |
           ls -la frontend/dist/frontend/
-          test -f "frontend/dist/frontend/frontend.zip" || { echo "ERROR: frontend zip artifact not found"; exit 1; }
+          test -f "frontend/dist/frontend/frontend-${{ github.sha }}.zip" || { echo "ERROR: frontend zip artifact not found"; exit 1; }
 
       - name: Terraform Init
         working-directory: terraform
@@ -297,6 +299,7 @@ jobs:
           terraform apply \
             -var="cf_username=${{ secrets.CF_USERNAME }}" \
             -var="cf_password=${{ secrets.CF_PASSWORD }}" \
+            -var="frontend_app_path=../frontend/dist/frontend/frontend-${{ github.sha }}.zip" \
             -input=false \
             -auto-approve
         env:
