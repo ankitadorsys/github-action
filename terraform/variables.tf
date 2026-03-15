@@ -112,9 +112,9 @@ variable "frontend_app_instances" {
 }
 
 variable "frontend_app_path" {
-  description = "Path to built frontend assets (relative to terraform/ directory)"
+  description = "Path to zipped frontend assets (relative to terraform/ directory)"
   type        = string
-  default     = "../frontend/dist/frontend/browser"
+  default     = "../frontend/dist/frontend/frontend.zip"
 }
 
 variable "frontend_app_hostname" {

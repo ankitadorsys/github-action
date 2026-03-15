@@ -155,6 +155,7 @@ jobs:
           mkdir -p ../frontend/dist/frontend/browser
           touch ../frontend/dist/frontend/browser/index.html
           cp ../frontend/Staticfile ../frontend/dist/frontend/browser/Staticfile
+          (cd ../frontend/dist/frontend/browser && zip -rq ../frontend.zip .)
 
           terraform plan \
             -var="cf_username=${{ secrets.CF_USERNAME }}" \
@@ -278,12 +279,13 @@ jobs:
           npm ci
           npm run build -- --configuration production
           cp Staticfile dist/frontend/browser/Staticfile
+          rm -f dist/frontend/frontend.zip
+          (cd dist/frontend/browser && zip -rq ../frontend.zip .)
 
       - name: Verify frontend build exists
         run: |
-          ls -la frontend/dist/frontend/browser/
-          test -f "frontend/dist/frontend/browser/index.html" || { echo "ERROR: frontend index.html not found"; exit 1; }
-          test -f "frontend/dist/frontend/browser/Staticfile" || { echo "ERROR: frontend Staticfile not found"; exit 1; }
+          ls -la frontend/dist/frontend/
+          test -f "frontend/dist/frontend/frontend.zip" || { echo "ERROR: frontend zip artifact not found"; exit 1; }
 
       - name: Terraform Init
         working-directory: terraform
