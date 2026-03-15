@@ -36,8 +36,9 @@ export class TaskFormComponent {
     private readonly router: Router,
     private readonly route: ActivatedRoute,
   ) {
-    const id = Number(this.route.snapshot.paramMap.get('id'));
-    if (Number.isFinite(id)) {
+    const idParam = this.route.snapshot.paramMap.get('id');
+    const id = idParam === null ? Number.NaN : Number(idParam);
+    if (Number.isInteger(id) && id > 0) {
       this.isEditMode = true;
       this.taskId = id;
       this.loadTaskForEdit(id);
