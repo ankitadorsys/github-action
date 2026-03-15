@@ -150,8 +150,8 @@ jobs:
         id: plan
         working-directory: terraform
         run: |
-          mkdir -p ../target
-          touch ../target/${{ env.JAR_NAME }}
+          mkdir -p ../backend/target
+          touch ../backend/target/${{ env.JAR_NAME }}
 
           terraform plan \
             -var="cf_username=${{ secrets.CF_USERNAME }}" \
@@ -240,13 +240,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: app-jar
-          path: target/
+          path: backend/target/
 
       - name: Verify JAR exists
         run: |
-          ls -la target/
-          echo "JAR file: target/${{ env.JAR_NAME }}"
-          test -f "target/${{ env.JAR_NAME }}" || { echo "ERROR: JAR not found!"; exit 1; }
+          ls -la backend/target/
+          echo "JAR file: backend/target/${{ env.JAR_NAME }}"
+          test -f "backend/target/${{ env.JAR_NAME }}" || { echo "ERROR: JAR not found!"; exit 1; }
 
       - name: Restore Terraform state
         run: |

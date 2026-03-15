@@ -71,13 +71,14 @@ jobs:
           cache: 'maven'
 
       - name: Build and test with Maven
+        working-directory: backend
         run: mvn clean verify -B --no-transfer-progress
 
       # Set the JAR name as an output so callers can reference it
       - name: Set JAR name
         id: set-jar-name
         run: |
-          JAR_NAME=$(ls target/*.jar | head -1 | xargs basename)
+          JAR_NAME=$(ls backend/target/*.jar | head -1 | xargs basename)
           echo "jar-name=$JAR_NAME" >> "$GITHUB_OUTPUT"
           echo "Built: $JAR_NAME"
 
@@ -88,5 +89,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-jar
-          path: target/github-action-demo-0.0.1-SNAPSHOT.jar
+          path: backend/target/github-action-demo-0.0.1-SNAPSHOT.jar
           retention-days: 7

@@ -78,7 +78,7 @@ variable "app_instances" {
 variable "app_path" {
   description = "Path to the application JAR file (relative to terraform/ directory)"
   type        = string
-  default     = "../target/github-action-demo-0.0.1-SNAPSHOT.jar"
+  default     = "../backend/target/github-action-demo-0.0.1-SNAPSHOT.jar"
 }
 
 variable "app_domain" {

@@ -89,7 +89,7 @@ OpenAPI code generation, MapStruct mapping, and comprehensive tests.
 
 ### Approach: API-First (Contract-First)
 
-1. Define API contract in `src/main/resources/openapi/api.yaml` (single source of truth)
+1. Define API contract in `api/api.yaml` (single source of truth)
 2. `openapi-generator-maven-plugin` generates Java interfaces + DTO classes
 3. Controllers implement the generated interfaces
 4. MapStruct mappers convert between JPA entities and generated DTOs
@@ -135,14 +135,14 @@ DELETE /api/tasks/{taskId}/comments/{id}   Delete a comment
 ### Files Created/Modified
 
 **Modified:**
-- `pom.xml` — Boot 4.0.3, Java 21, springdoc 3.0.2, Lombok, MapStruct, openapi-generator, test deps
+- `backend/pom.xml` — Boot 4.0.3, Java 21, springdoc 3.0.2, Lombok, MapStruct, openapi-generator, test deps
 - `.github/workflows/pipeline.yml` — matrix [21, 25]
 - `.github/workflows/reusable-build.yml` — setup-java@v5
 - `src/main/resources/application.yml` — H2 + JPA + OpenAPI + Actuator config
 - `src/test/.../controller/HelloControllerTest.java` — added @DisplayName
 
 **Created (source):**
-- `src/main/resources/openapi/api.yaml` — OpenAPI 3.0.3 spec
+- `api/api.yaml` — OpenAPI 3.0.3 spec
 - `src/.../controller/TaskController.java` — implements TasksApi
 - `src/.../controller/CategoryController.java` — implements CategoriesApi
 - `src/.../controller/TagController.java` — implements TagsApi
@@ -277,7 +277,7 @@ Public: `/api/hello`, `/swagger-ui/**`, `/v3/api-docs/**`, `/actuator/health`, `
 ### Files Created/Modified
 
 **Modified:**
-- `pom.xml` — added oauth2-resource-server + spring-security-test deps
+- `backend/pom.xml` — added oauth2-resource-server + spring-security-test deps
 - `src/.../controller/TaskController.java` — @PreAuthorize + authenticationService.getCurrentUser()
 - `src/.../controller/CategoryController.java` — @PreAuthorize role checks
 - `src/.../controller/TagController.java` — @PreAuthorize role checks
@@ -287,14 +287,14 @@ Public: `/api/hello`, `/swagger-ui/**`, `/v3/api-docs/**`, `/actuator/health`, `
 - `src/.../repository/TaskRepository.java` — added findByUserId()
 - `src/.../exception/GlobalExceptionHandler.java` — AccessDeniedException → 403
 - `src/main/resources/application.yml` — JWT issuer-uri config
-- `src/main/resources/openapi/api.yaml` — bearerAuth, 401/403 responses, userId in TaskResponse
+- `api/api.yaml` — bearerAuth, 401/403 responses, userId in TaskResponse
 - All controller tests — @Import(TestSecurityConfig), security mocks
 - `src/test/.../service/TaskServiceTest.java` — userId/isAdmin param tests
 - `src/test/.../SpringIntegrationTest.java` — @ActiveProfiles("nosecurity")
 
 **Created:**
-- `docker-compose.yml` — Keycloak 26.2.5 on port 8180
-- `keycloak/realm-export.json` — Pre-configured realm
+- `backend/docker-compose.yml` — Keycloak 26.2.5 on port 8180
+- `backend/keycloak/realm-export.json` — Pre-configured realm
 - `src/.../config/SecurityConfig.java` — JWT + @EnableMethodSecurity + Keycloak role converter
 - `src/.../config/NoSecurityConfig.java` — @Profile("nosecurity") permits all
 - `src/.../security/AuthenticatedUser.java` — Record(userId, username, roles)
@@ -362,6 +362,8 @@ Public: `/api/hello`, `/swagger-ui/**`, `/v3/api-docs/**`, `/actuator/health`, `
 **Branch:** `feature/09-angular-frontend`
 **Goal:** Build the Angular SPA with Keycloak login and task management UI.
 
+**Status:** IN PROGRESS
+
 ### Project Structure
 
 ```
@@ -412,18 +414,18 @@ frontend/                           # Angular project (separate from backend)
 
 ### Checklist
 
-- [ ] Angular project scaffolded in `frontend/` directory
-- [ ] angular-oauth2-oidc configured with Keycloak
+- [x] Angular project scaffolded in `frontend/` directory
+- [x] angular-oauth2-oidc configured with Keycloak (base auth service + interceptor)
 - [ ] Login/logout flow working (redirects to Keycloak)
-- [ ] Auth guard protects task routes
-- [ ] HTTP interceptor attaches JWT to API calls
+- [x] Auth guard protects task routes
+- [x] HTTP interceptor attaches JWT to API calls
 - [ ] Task list page (displays all tasks)
 - [ ] Task create/edit form (reactive form with validation)
 - [ ] Task delete with confirmation
 - [ ] Status/priority shown with visual indicators (colors/icons)
 - [ ] Show logged-in user name + role
-- [ ] Proxy config for dev (localhost:4200 → localhost:8080)
-- [ ] `ng build` produces production bundle
+- [x] Proxy config for dev (localhost:4200 → localhost:8080)
+- [x] `ng build` produces production bundle
 - [ ] CI pipeline updated to build Angular too
 
 ---

@@ -1,0 +1,17 @@
+<section class="panel">
+  <h1>Create task</h1>
+
+  <form [formGroup]="taskForm" (ngSubmit)="onSubmit()">
+    <label for="title">Title</label>
+    <input id="title" type="text" formControlName="title" />
+
+    @if (taskForm.controls.title.invalid && taskForm.controls.title.touched) {
+      <p class="error">Title is required and must be <= 255 characters.</p>
+    }
+
+    <label for="description">Description</label>
+    <textarea id="description" rows="4" formControlName="description"></textarea>
+
+    <button type="submit">Save</button>
+  </form>
+</section>

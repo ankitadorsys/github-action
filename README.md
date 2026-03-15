@@ -2,8 +2,9 @@
 
 [![CI/CD Pipeline](https://github.com/ankitadorsys/github-action/actions/workflows/pipeline.yml/badge.svg)](https://github.com/ankitadorsys/github-action/actions/workflows/pipeline.yml)
 
-A learning project to master **GitHub Actions** by building a Spring Boot application
-and deploying it to **Cloud Foundry** (SAP BTP) using **Terraform** for infrastructure.
+A learning project to master **GitHub Actions** by building a full-stack Task Manager
+with a Spring Boot backend, Angular frontend, and deployment to **Cloud Foundry**
+(SAP BTP) using **Terraform** for infrastructure.
 
 ## Live App
 
@@ -14,7 +15,7 @@ https://github-action-demo-86d1d2ddtrial.cfapps.ap21.hana.ondemand.com/api/hello
 | Component | Choice |
 |-----------|--------|
 | Language | Java 21 |
-| Framework | Spring Boot 3.x |
+| Framework | Spring Boot 4.x |
 | Build Tool | Maven |
 | CI/CD | GitHub Actions |
 | IaC | Terraform |
@@ -24,13 +25,13 @@ https://github-action-demo-86d1d2ddtrial.cfapps.ap21.hana.ondemand.com/api/hello
 
 ```
 github-action/
-├── src/                          # Java source + tests
+├── backend/                      # Spring Boot backend (Maven)
+├── frontend/                     # Angular frontend
+├── api/                          # OpenAPI contract (single source of truth)
 ├── terraform/                    # Infrastructure as Code
 ├── .github/workflows/
 │   ├── pipeline.yml              # Full CI/CD pipeline
 │   └── reusable-build.yml        # Reusable build workflow
-├── manifest.yml                  # CF deployment manifest
-├── pom.xml                       # Maven build config
 ├── LEARNING.md                   # Step-by-step learning journal
 ├── PLAN.md                       # Phase roadmap
 └── SKILLS.md                     # AI context file
@@ -41,7 +42,7 @@ github-action/
 The pipeline runs automatically on every push and PR:
 
 ```
-Push to feature branch  -->  Matrix build (Java 17 + 21)
+Push to feature branch  -->  Matrix build (Java 21 + 25)
 Open PR to main         -->  Matrix build + Terraform plan (PR comment)
 Merge to main           -->  Matrix build + Terraform apply + deploy to CF
 ```

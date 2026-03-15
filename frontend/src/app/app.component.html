@@ -1,0 +1,20 @@
+<div class="shell">
+  <header class="topbar">
+    <a class="brand" routerLink="/tasks">Task Manager</a>
+    <nav class="menu">
+      <a routerLink="/tasks" routerLinkActive="active">Tasks</a>
+      <a routerLink="/tasks/new" routerLinkActive="active">New Task</a>
+    </nav>
+    <div class="session-actions">
+      @if (authService.isAuthenticated()) {
+        <button type="button" class="outline" (click)="authService.logout()">Logout</button>
+      } @else {
+        <button type="button" class="solid" (click)="authService.login()">Login</button>
+      }
+    </div>
+  </header>
+
+  <main class="content">
+    <router-outlet />
+  </main>
+</div>

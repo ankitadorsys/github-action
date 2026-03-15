@@ -1,0 +1,23 @@
+.panel {
+  background: #fff;
+  border: 1px solid #d8e3f1;
+  border-radius: 14px;
+  padding: 1rem;
+}
+
+.meta {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+.meta span {
+  background: #edf3fa;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.55rem;
+}
+
+.error {
+  color: #a82121;
+}

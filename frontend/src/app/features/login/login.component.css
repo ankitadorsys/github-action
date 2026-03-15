@@ -1,0 +1,33 @@
+.login-card {
+  background: #fff;
+  border: 1px solid #d8e3f1;
+  border-radius: 14px;
+  margin: 2rem auto;
+  max-width: 560px;
+  padding: 1.4rem;
+}
+
+h1 {
+  color: #15314e;
+  margin: 0 0 0.6rem;
+}
+
+p {
+  color: #425466;
+}
+
+button {
+  background: #0f5cb8;
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 600;
+  margin-top: 0.8rem;
+  padding: 0.6rem 1rem;
+}
+
+.hint {
+  font-size: 0.9rem;
+  margin-top: 1rem;
+}

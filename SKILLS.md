@@ -21,7 +21,7 @@ with Spring Boot, Angular, OpenAPI, and Keycloak authentication.
 | Frontend          | Angular 17+ (standalone components) — Phase 9 |
 | API Docs          | OpenAPI 3.0 (springdoc-openapi 3.0.2)      |
 | API Approach      | Contract-First (openapi-generator-maven-plugin 7.20.0) |
-| Auth/IdP          | Keycloak (Docker) via OAuth2/OIDC — Phase 8 |
+| Auth/IdP          | Keycloak (Cloud-IAM + Docker local) via OAuth2/OIDC — Phase 8 |
 | Build Tool        | Maven (backend), Angular CLI (frontend)     |
 | CI/CD             | GitHub Actions (setup-java@v5)              |
 | IaC               | Terraform (Cloud Foundry provider)          |
@@ -54,22 +54,17 @@ with Spring Boot, Angular, OpenAPI, and Keycloak authentication.
 - **Project structure:**
   ```
   github-action/
-  ├── src/main/java/com/example/demo/    # Java source
-  │   ├── controller/                     # REST controllers (implement generated API interfaces)
-  │   ├── model/                          # JPA entities (use Lombok)
-  │   ├── repository/                     # Spring Data JPA repositories
-  │   ├── service/                        # Business logic layer
-  │   ├── mapper/                         # MapStruct mapper interfaces
-  │   └── exception/                      # Custom exceptions + GlobalExceptionHandler
-  ├── src/main/resources/
-  │   ├── application.yml                 # H2, JPA, OpenAPI, Actuator config
-  │   └── openapi/api.yaml               # OpenAPI spec (single source of truth)
-  ├── src/test/java/com/example/demo/    # Tests
-  ├── target/generated-sources/openapi/  # Auto-generated API interfaces + DTOs
+  ├── backend/                            # Spring Boot backend (Maven)
+  │   ├── src/main/java/com/example/demo/
+  │   ├── src/main/resources/
+  │   ├── src/test/java/com/example/demo/
+  │   ├── pom.xml
+  │   └── manifest.yml
+  ├── frontend/                           # Angular frontend
+  ├── api/                                # OpenAPI contract (single source of truth)
+  │   └── api.yaml
   ├── terraform/                          # Terraform configs (Phase 4+)
   ├── .github/workflows/                  # GitHub Actions (Phase 2+)
-  ├── manifest.yml                        # CF deployment manifest
-  ├── pom.xml                             # Maven build
   ├── SKILLS.md                           # This file
   └── PLAN.md                             # Phased roadmap
   ```
@@ -124,8 +119,8 @@ with Spring Boot, Angular, OpenAPI, and Keycloak authentication.
 ## API-First Architecture (Phase 7)
 
 ### How It Works
-1. Define API contract in `src/main/resources/openapi/api.yaml`
-2. `openapi-generator-maven-plugin` generates Java interfaces + DTO classes into `target/generated-sources/openapi/`
+1. Define API contract in `api/api.yaml`
+2. `openapi-generator-maven-plugin` (in `backend/pom.xml`) generates Java interfaces + DTO classes into `backend/target/generated-sources/openapi/`
 3. Controllers `implement` the generated interfaces (e.g., `TaskController implements TasksApi`)
 4. MapStruct mappers convert between JPA entities and generated DTOs
 
@@ -204,13 +199,13 @@ Category (1) ──── (*) Task (*) ──── (*) Tag
 
 ## Current Status
 
-- **Active Phase:** Phase 8 — COMPLETE
-- **Active Branch:** `feature/08-keycloak-security` (ready to merge to `main`)
+- **Active Phase:** Phase 9 — IN PROGRESS
+- **Active Branch:** `feature/09-angular-frontend`
 - **Part A (Phases 1-6):** COMPLETE — CI/CD pipeline with Terraform + CF deployed
 - **Part B (Phases 7-12):** IN PROGRESS
 - **Deployed App:** https://github-action-demo-86d1d2ddtrial.cfapps.ap21.hana.ondemand.com/api/hello
 - **Terraform:** App + route managed by Terraform; state on `terraform-state` branch
 - **CI/CD Pipeline:** `.github/workflows/pipeline.yml` — matrix build (Java 21+25), reusable workflows, terraform plan on PR, terraform apply + deploy on merge to main
 - **Tests:** 114 total (all passing) — 29 integration + 33 controller unit + 36 service unit + 18 security
-- **Next:** Phase 9 — Angular Frontend
-- **Last updated:** 2026-03-14
+- **Next:** Continue Phase 9 — Angular frontend auth flow + task CRUD UI
+- **Last updated:** 2026-03-15

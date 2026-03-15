@@ -1,0 +1,76 @@
+.shell {
+  min-height: 100vh;
+  background: linear-gradient(120deg, #f7fafc 0%, #e6f2ff 45%, #fff7ec 100%);
+}
+
+.topbar {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.9);
+  border-bottom: 1px solid #d8e3f1;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 0.9rem 1.2rem;
+  position: sticky;
+  top: 0;
+}
+
+.brand {
+  color: #0a2540;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+}
+
+.menu {
+  display: flex;
+  gap: 1rem;
+}
+
+.menu a {
+  border-radius: 999px;
+  color: #2d3a49;
+  padding: 0.4rem 0.75rem;
+  text-decoration: none;
+}
+
+.menu a.active {
+  background: #deebff;
+  color: #114084;
+}
+
+.session-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.session-actions button {
+  border-radius: 999px;
+  border: 1px solid #0f5cb8;
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.4rem 0.9rem;
+}
+
+.session-actions .solid {
+  background: #0f5cb8;
+  color: #fff;
+}
+
+.session-actions .outline {
+  background: #fff;
+  color: #0f5cb8;
+}
+
+.content {
+  margin: 0 auto;
+  max-width: 980px;
+  padding: 1.2rem;
+}
+
+@media (max-width: 768px) {
+  .topbar {
+    flex-wrap: wrap;
+  }
+}
