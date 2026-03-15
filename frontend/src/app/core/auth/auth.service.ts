@@ -8,6 +8,9 @@ import { environment } from '../../../environments/environment';
   providedIn: 'root',
 })
 export class AuthService {
+  private initialized = false;
+  private initializePromise?: Promise<void>;
+
   private readonly authConfig: AuthConfig = {
     issuer: environment.keycloakIssuer,
     clientId: environment.keycloakClientId,
@@ -21,16 +24,30 @@ export class AuthService {
   constructor(
     private readonly oauthService: OAuthService,
     private readonly router: Router,
-  ) {
+  ) {}
+
+  initialize(): Promise<void> {
+    if (this.initialized) {
+      return Promise.resolve();
+    }
+
+    if (this.initializePromise) {
+      return this.initializePromise;
+    }
+
     this.oauthService.configure(this.authConfig);
-    void this.oauthService.loadDiscoveryDocumentAndTryLogin().then(() => {
+    this.initializePromise = this.oauthService.loadDiscoveryDocumentAndTryLogin().then(() => {
+      this.initialized = true;
+
       if (!this.isAuthCallback()) {
         return;
       }
 
       const targetUrl = this.oauthService.state || '/tasks';
-      void this.router.navigateByUrl(targetUrl);
+      return this.router.navigateByUrl(targetUrl).then(() => undefined);
     });
+
+    return this.initializePromise;
   }
 
   login(returnUrl = '/tasks'): void {
