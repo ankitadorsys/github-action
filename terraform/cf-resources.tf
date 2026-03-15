@@ -78,3 +78,24 @@ resource "cloudfoundry_app" "app" {
     JBP_CONFIG_OPEN_JDK_JRE = "{ jre: { version: 21.+ } }"
   }
 }
+
+resource "cloudfoundry_route" "frontend_route" {
+  domain   = data.cloudfoundry_domain.apps.id
+  space    = data.cloudfoundry_space.space.id
+  hostname = var.frontend_app_hostname
+
+  target {
+    app = cloudfoundry_app.frontend_app.id
+  }
+}
+
+resource "cloudfoundry_app" "frontend_app" {
+  name      = var.frontend_app_name
+  space     = data.cloudfoundry_space.space.id
+  memory    = var.frontend_app_memory
+  instances = var.frontend_app_instances
+  path      = var.frontend_app_path
+  buildpack = "staticfile_buildpack"
+
+  health_check_type = "port"
+}

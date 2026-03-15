@@ -18,6 +18,16 @@ output "app_id" {
   value       = cloudfoundry_app.app.id
 }
 
+output "frontend_url" {
+  description = "The URL of the deployed frontend application"
+  value       = "https://${cloudfoundry_route.frontend_route.endpoint}"
+}
+
+output "frontend_app_id" {
+  description = "The GUID of the frontend CF application"
+  value       = cloudfoundry_app.frontend_app.id
+}
+
 output "space_id" {
   description = "The GUID of the CF space"
   value       = data.cloudfoundry_space.space.id

@@ -92,3 +92,33 @@ variable "app_hostname" {
   type        = string
   default     = "github-action-demo-86d1d2ddtrial"
 }
+
+variable "frontend_app_name" {
+  description = "Name of the frontend CF application"
+  type        = string
+  default     = "github-action-frontend"
+}
+
+variable "frontend_app_memory" {
+  description = "Memory limit per frontend app instance in MB"
+  type        = number
+  default     = 256
+}
+
+variable "frontend_app_instances" {
+  description = "Number of frontend application instances"
+  type        = number
+  default     = 1
+}
+
+variable "frontend_app_path" {
+  description = "Path to built frontend assets (relative to terraform/ directory)"
+  type        = string
+  default     = "../frontend/dist/frontend/browser"
+}
+
+variable "frontend_app_hostname" {
+  description = "Hostname for the frontend app route"
+  type        = string
+  default     = "github-action-frontend-86d1d2ddtrial"
+}
