@@ -51,6 +51,11 @@
             <scope>runtime</scope>
         </dependency>
 
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-h2console</artifactId>
+        </dependency>
+
         <!-- === Validation === -->
         <!-- Bean Validation (Hibernate Validator): annotations like @NotBlank, @Size,
              @NotNull that automatically validate request bodies. Spring checks these
