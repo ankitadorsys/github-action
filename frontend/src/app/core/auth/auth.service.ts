@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { Router } from '@angular/router';
 import { AuthConfig, OAuthService } from 'angular-oauth2-oidc';
 
 import { environment } from '../../../environments/environment';
@@ -17,13 +18,23 @@ export class AuthService {
     strictDiscoveryDocumentValidation: false,
   };
 
-  constructor(private readonly oauthService: OAuthService) {
+  constructor(
+    private readonly oauthService: OAuthService,
+    private readonly router: Router,
+  ) {
     this.oauthService.configure(this.authConfig);
-    void this.oauthService.loadDiscoveryDocumentAndTryLogin();
+    void this.oauthService.loadDiscoveryDocumentAndTryLogin().then(() => {
+      if (!this.isAuthCallback()) {
+        return;
+      }
+
+      const targetUrl = this.oauthService.state || '/tasks';
+      void this.router.navigateByUrl(targetUrl);
+    });
   }
 
-  login(): void {
-    this.oauthService.initCodeFlow();
+  login(returnUrl = '/tasks'): void {
+    this.oauthService.initCodeFlow(returnUrl);
   }
 
   logout(): void {
@@ -36,5 +47,10 @@ export class AuthService {
 
   getAccessToken(): string {
     return this.oauthService.getAccessToken();
+  }
+
+  private isAuthCallback(): boolean {
+    const search = new URLSearchParams(window.location.search);
+    return search.has('code') && search.has('state');
   }
 }
