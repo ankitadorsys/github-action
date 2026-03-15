@@ -12,6 +12,12 @@
     <label for="description">Description</label>
     <textarea id="description" rows="4" formControlName="description"></textarea>
 
-    <button type="submit">Save</button>
+    @if (errorMessage) {
+      <p class="error">{{ errorMessage }}</p>
+    }
+
+    <button type="submit" [disabled]="loading">
+      {{ loading ? 'Saving...' : 'Save' }}
+    </button>
   </form>
 </section>

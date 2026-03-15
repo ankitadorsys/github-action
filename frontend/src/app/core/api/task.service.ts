@@ -3,7 +3,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
-import { Task } from '../../shared/models/task.model';
+import { CreateTaskRequest, Task } from '../../shared/models/task.model';
 
 @Injectable({
   providedIn: 'root',
@@ -19,5 +19,9 @@ export class TaskService {
 
   getTaskById(id: number): Observable<Task> {
     return this.httpClient.get<Task>(`${this.tasksUrl}/${id}`);
+  }
+
+  createTask(request: CreateTaskRequest): Observable<Task> {
+    return this.httpClient.post<Task>(this.tasksUrl, request);
   }
 }
