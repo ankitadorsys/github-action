@@ -93,7 +93,7 @@ resource "cloudfoundry_route" "frontend_api_route" {
   domain   = data.cloudfoundry_domain.apps.id
   space    = data.cloudfoundry_space.space.id
   hostname = var.frontend_app_hostname
-  path     = "api"
+  path     = "/api"
 
   target {
     app = cloudfoundry_app.app.id
