@@ -43,11 +43,40 @@ a {
   text-decoration: none;
 }
 
-span {
-  background: #edf3fa;
+.badge {
   border-radius: 999px;
   font-size: 0.8rem;
   padding: 0.25rem 0.55rem;
+}
+
+.badge.status.todo {
+  background: #eef3fb;
+  color: #2f4a6c;
+}
+
+.badge.status.in-progress {
+  background: #fff3e8;
+  color: #a24b00;
+}
+
+.badge.status.done {
+  background: #e8f8eb;
+  color: #2a7b3a;
+}
+
+.badge.priority.low {
+  background: #edf4ff;
+  color: #1f5496;
+}
+
+.badge.priority.medium {
+  background: #fff1e6;
+  color: #9b4500;
+}
+
+.badge.priority.high {
+  background: #ffe6e6;
+  color: #9e1f1f;
 }
 
 .error {

@@ -362,7 +362,7 @@ Public: `/api/hello`, `/swagger-ui/**`, `/v3/api-docs/**`, `/actuator/health`, `
 **Branch:** `feature/09-angular-frontend`
 **Goal:** Build the Angular SPA with Keycloak login and task management UI.
 
-**Status:** IN PROGRESS
+**Status:** DONE
 
 ### Project Structure
 
@@ -416,17 +416,17 @@ frontend/                           # Angular project (separate from backend)
 
 - [x] Angular project scaffolded in `frontend/` directory
 - [x] angular-oauth2-oidc configured with Keycloak (base auth service + interceptor)
-- [ ] Login/logout flow working (redirects to Keycloak)
+- [x] Login/logout flow working (redirects to Keycloak)
 - [x] Auth guard protects task routes
 - [x] HTTP interceptor attaches JWT to API calls
-- [ ] Task list page (displays all tasks)
-- [ ] Task create/edit form (reactive form with validation)
-- [ ] Task delete with confirmation
-- [ ] Status/priority shown with visual indicators (colors/icons)
-- [ ] Show logged-in user name + role
+- [x] Task list page (displays all tasks)
+- [x] Task create/edit form (reactive form with validation)
+- [x] Task delete with confirmation
+- [x] Status/priority shown with visual indicators (colors/icons)
+- [x] Show logged-in user name + role
 - [x] Proxy config for dev (localhost:4200 → localhost:8080)
 - [x] `ng build` produces production bundle
-- [ ] CI pipeline updated to build Angular too
+- [x] CI pipeline updated to build Angular too
 
 ---
 

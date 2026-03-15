@@ -15,8 +15,12 @@
       @for (task of tasks; track task.id) {
         <li>
           <a [routerLink]="['/tasks', task.id]">{{ task.title }}</a>
-          <span>{{ task.status }}</span>
-          <span>{{ task.priority }}</span>
+          <span class="badge" [class]="'badge status ' + statusClass(task.status)">
+            {{ task.status }}
+          </span>
+          <span class="badge" [class]="'badge priority ' + priorityClass(task.priority)">
+            {{ task.priority }}
+          </span>
         </li>
       }
     </ul>

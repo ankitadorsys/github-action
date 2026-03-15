@@ -41,8 +41,27 @@
 }
 
 .session-actions {
+  align-items: center;
   display: flex;
   gap: 0.5rem;
+}
+
+.identity {
+  display: grid;
+  justify-items: end;
+  line-height: 1.1;
+}
+
+.identity span {
+  color: #223648;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.identity small {
+  color: #5a6f83;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
 }
 
 .session-actions button {

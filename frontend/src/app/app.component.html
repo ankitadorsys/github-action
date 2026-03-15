@@ -7,6 +7,10 @@
     </nav>
     <div class="session-actions">
       @if (authService.isAuthenticated()) {
+        <div class="identity">
+          <span>{{ authService.getUsername() }}</span>
+          <small>{{ authService.getPrimaryRole() }}</small>
+        </div>
         <button type="button" class="outline" (click)="authService.logout()">Logout</button>
       } @else {
         <button type="button" class="solid" (click)="authService.login()">Login</button>

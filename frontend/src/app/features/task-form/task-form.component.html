@@ -1,5 +1,5 @@
 <section class="panel">
-  <h1>Create task</h1>
+  <h1>{{ isEditMode ? 'Edit task' : 'Create task' }}</h1>
 
   <form [formGroup]="taskForm" (ngSubmit)="onSubmit()">
     <label for="title">Title</label>
@@ -12,12 +12,29 @@
     <label for="description">Description</label>
     <textarea id="description" rows="4" formControlName="description"></textarea>
 
+    <label for="status">Status</label>
+    <select id="status" formControlName="status">
+      @for (status of statusOptions; track status) {
+        <option [value]="status">{{ status }}</option>
+      }
+    </select>
+
+    <label for="priority">Priority</label>
+    <select id="priority" formControlName="priority">
+      @for (priority of priorityOptions; track priority) {
+        <option [value]="priority">{{ priority }}</option>
+      }
+    </select>
+
+    <label for="dueDate">Due date</label>
+    <input id="dueDate" type="date" formControlName="dueDate" />
+
     @if (errorMessage) {
       <p class="error">{{ errorMessage }}</p>
     }
 
     <button type="submit" [disabled]="loading">
-      {{ loading ? 'Saving...' : 'Save' }}
+      {{ loading ? 'Saving...' : isEditMode ? 'Update' : 'Save' }}
     </button>
   </form>
 </section>

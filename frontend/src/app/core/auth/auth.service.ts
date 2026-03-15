@@ -66,8 +66,70 @@ export class AuthService {
     return this.oauthService.getAccessToken();
   }
 
+  getUsername(): string {
+    const claims = this.oauthService.getIdentityClaims() as Record<string, unknown> | null;
+    if (claims?.['preferred_username'] && typeof claims['preferred_username'] === 'string') {
+      return claims['preferred_username'];
+    }
+
+    const payload = this.getAccessTokenPayload();
+    const username = payload?.['preferred_username'];
+    if (typeof username === 'string' && username.length > 0) {
+      return username;
+    }
+
+    return 'Unknown user';
+  }
+
+  getRoles(): string[] {
+    const payload = this.getAccessTokenPayload();
+    const realmAccess = payload?.['realm_access'];
+
+    if (!realmAccess || typeof realmAccess !== 'object') {
+      return [];
+    }
+
+    const roles = (realmAccess as { roles?: unknown }).roles;
+    if (!Array.isArray(roles)) {
+      return [];
+    }
+
+    return roles.filter((role): role is string => typeof role === 'string');
+  }
+
+  getPrimaryRole(): string {
+    const roles = this.getRoles();
+    if (roles.includes('ROLE_ADMIN')) {
+      return 'ROLE_ADMIN';
+    }
+    if (roles.includes('ROLE_USER')) {
+      return 'ROLE_USER';
+    }
+    return roles[0] ?? 'NO_ROLE';
+  }
+
   private isAuthCallback(): boolean {
     const search = new URLSearchParams(window.location.search);
     return search.has('code') && search.has('state');
+  }
+
+  private getAccessTokenPayload(): Record<string, unknown> | null {
+    const token = this.getAccessToken();
+    if (!token) {
+      return null;
+    }
+
+    const tokenParts = token.split('.');
+    if (tokenParts.length < 2) {
+      return null;
+    }
+
+    try {
+      const base64 = tokenParts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+      return JSON.parse(atob(padded)) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
   }
 }

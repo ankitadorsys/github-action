@@ -3,7 +3,7 @@ import { Component, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { TaskService } from '../../core/api/task.service';
-import { Task } from '../../shared/models/task.model';
+import { Task, TaskPriority, TaskStatus } from '../../shared/models/task.model';
 
 @Component({
   selector: 'app-task-list',
@@ -30,5 +30,25 @@ export class TaskListComponent implements OnInit {
         this.loading = false;
       },
     });
+  }
+
+  statusClass(status: TaskStatus): string {
+    if (status === 'DONE') {
+      return 'done';
+    }
+    if (status === 'IN_PROGRESS') {
+      return 'in-progress';
+    }
+    return 'todo';
+  }
+
+  priorityClass(priority: TaskPriority): string {
+    if (priority === 'HIGH') {
+      return 'high';
+    }
+    if (priority === 'MEDIUM') {
+      return 'medium';
+    }
+    return 'low';
   }
 }

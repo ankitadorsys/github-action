@@ -199,7 +199,7 @@ Category (1) ──── (*) Task (*) ──── (*) Tag
 
 ## Current Status
 
-- **Active Phase:** Phase 9 — IN PROGRESS
+- **Active Phase:** Phase 9 — COMPLETE
 - **Active Branch:** `feature/09-angular-frontend`
 - **Part A (Phases 1-6):** COMPLETE — CI/CD pipeline with Terraform + CF deployed
 - **Part B (Phases 7-12):** IN PROGRESS
@@ -207,5 +207,5 @@ Category (1) ──── (*) Task (*) ──── (*) Tag
 - **Terraform:** App + route managed by Terraform; state on `terraform-state` branch
 - **CI/CD Pipeline:** `.github/workflows/pipeline.yml` — matrix build (Java 21+25), reusable workflows, terraform plan on PR, terraform apply + deploy on merge to main
 - **Tests:** 114 total (all passing) — 29 integration + 33 controller unit + 36 service unit + 18 security
-- **Next:** Continue Phase 9 — Angular frontend auth flow + task CRUD UI
+- **Next:** Phase 10 — Validation + Error Handling + Polish
 - **Last updated:** 2026-03-15

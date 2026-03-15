@@ -10,6 +10,7 @@ export const routes: Routes = [
   { path: '', redirectTo: 'tasks', pathMatch: 'full' },
   { path: 'tasks', component: TaskListComponent, canActivate: [authGuard] },
   { path: 'tasks/new', component: TaskFormComponent, canActivate: [authGuard] },
+  { path: 'tasks/:id/edit', component: TaskFormComponent, canActivate: [authGuard] },
   { path: 'tasks/:id', component: TaskDetailComponent, canActivate: [authGuard] },
   { path: '**', redirectTo: 'tasks' },
 ];

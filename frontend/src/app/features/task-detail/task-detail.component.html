@@ -1,15 +1,25 @@
 <section class="panel">
   @if (errorMessage) {
     <p class="error">{{ errorMessage }}</p>
-  } @else if (!task) {
+  } @else if (loading || !task) {
     <p>Loading task details...</p>
   } @else {
-    <h1>{{ task.title }}</h1>
+    <div class="header-row">
+      <h1>{{ task.title }}</h1>
+      <div class="actions">
+        <a [routerLink]="['/tasks', task.id, 'edit']">Edit</a>
+        <button type="button" class="danger" [disabled]="deleting" (click)="deleteTask()">
+          {{ deleting ? 'Deleting...' : 'Delete' }}
+        </button>
+      </div>
+    </div>
+
     <p>{{ task.description || 'No description.' }}</p>
 
     <div class="meta">
-      <span>{{ task.status }}</span>
-      <span>{{ task.priority }}</span>
+      <span class="badge status">{{ task.status }}</span>
+      <span class="badge priority">{{ task.priority }}</span>
+      <span class="badge due">{{ task.dueDate || 'No due date' }}</span>
     </div>
   }
 </section>
