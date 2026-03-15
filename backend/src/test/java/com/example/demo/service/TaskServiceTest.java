@@ -25,6 +25,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -95,15 +98,14 @@ class TaskServiceTest {
     void getAllTasks_userGetsOwnTasks() {
         Task task = sampleTask();
         TaskResponse response = sampleResponse();
-        given(taskRepository.findByUserId(USER_ID)).willReturn(List.of(task));
+        given(taskRepository.findAll(any(Specification.class), any(Pageable.class))).willReturn(new PageImpl<>(List.of(task)));
         given(taskMapper.toResponse(task)).willReturn(response);
 
         List<TaskResponse> result = taskService.getAllTasks(USER_ID, false);
 
         assertThat(result).hasSize(1);
         assertThat(result.getFirst().getTitle()).isEqualTo("Test Task");
-        then(taskRepository).should().findByUserId(USER_ID);
-        then(taskRepository).should(never()).findAll();
+        then(taskRepository).should().findAll(any(Specification.class), any(Pageable.class));
     }
 
     @Test
@@ -111,14 +113,13 @@ class TaskServiceTest {
     void getAllTasks_adminGetsAllTasks() {
         Task task = sampleTask();
         TaskResponse response = sampleResponse();
-        given(taskRepository.findAll()).willReturn(List.of(task));
+        given(taskRepository.findAll(any(Specification.class), any(Pageable.class))).willReturn(new PageImpl<>(List.of(task)));
         given(taskMapper.toResponse(task)).willReturn(response);
 
         List<TaskResponse> result = taskService.getAllTasks(USER_ID, true);
 
         assertThat(result).hasSize(1);
-        then(taskRepository).should().findAll();
-        then(taskRepository).should(never()).findByUserId(any());
+        then(taskRepository).should().findAll(any(Specification.class), any(Pageable.class));
     }
 
     @Test

@@ -10,6 +10,8 @@ import com.example.demo.exception.GlobalExceptionHandler;
 import com.example.demo.exception.TaskNotFoundException;
 import com.example.demo.security.AuthenticatedUser;
 import com.example.demo.security.AuthenticationService;
+import com.example.demo.service.TaskFilterCriteria;
+import com.example.demo.service.TaskPageResult;
 import com.example.demo.service.TaskService;
 import tools.jackson.databind.ObjectMapper;
 import java.time.LocalDate;
@@ -87,7 +89,8 @@ class TaskControllerTest {
     @DisplayName("GET /api/tasks - returns list of tasks")
     void getAllTasks_returnsListOfTasks() throws Exception {
         given(authenticationService.getCurrentUser()).willReturn(USER);
-        given(taskService.getAllTasks(USER_ID, false)).willReturn(List.of(sampleResponse()));
+        given(taskService.getAllTasks(any(TaskFilterCriteria.class), eq(USER_ID), eq(false)))
+                .willReturn(new TaskPageResult(List.of(sampleResponse()), 1, 1, 0, 10));
 
         mockMvc.perform(get("/api/tasks")
                         .with(jwt().jwt(j -> j.subject(USER_ID).claim("realm_access", Map.of("roles", List.of("ROLE_USER"))))))
@@ -101,7 +104,8 @@ class TaskControllerTest {
     @DisplayName("GET /api/tasks - returns empty list when no tasks exist")
     void getAllTasks_returnsEmptyList() throws Exception {
         given(authenticationService.getCurrentUser()).willReturn(USER);
-        given(taskService.getAllTasks(USER_ID, false)).willReturn(List.of());
+        given(taskService.getAllTasks(any(TaskFilterCriteria.class), eq(USER_ID), eq(false)))
+                .willReturn(new TaskPageResult(List.of(), 0, 0, 0, 10));
 
         mockMvc.perform(get("/api/tasks")
                         .with(jwt().jwt(j -> j.subject(USER_ID).claim("realm_access", Map.of("roles", List.of("ROLE_USER"))))))

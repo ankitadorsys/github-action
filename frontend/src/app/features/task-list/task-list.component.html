@@ -4,6 +4,28 @@
     <a routerLink="/tasks/new">Create task</a>
   </div>
 
+  <form class="filters" (ngSubmit)="applyFilters()">
+    <select [(ngModel)]="statusFilter" name="statusFilter">
+      <option value="">All status</option>
+      @for (status of statusOptions; track status) {
+        <option [value]="status">{{ status }}</option>
+      }
+    </select>
+
+    <select [(ngModel)]="priorityFilter" name="priorityFilter">
+      <option value="">All priority</option>
+      @for (priority of priorityOptions; track priority) {
+        <option [value]="priority">{{ priority }}</option>
+      }
+    </select>
+
+    <input type="date" [(ngModel)]="dueDateFrom" name="dueDateFrom" />
+    <input type="date" [(ngModel)]="dueDateTo" name="dueDateTo" />
+
+    <button type="submit">Apply</button>
+    <button type="button" class="secondary" (click)="resetFilters()">Reset</button>
+  </form>
+
   @if (loading) {
     <p>Loading tasks...</p>
   } @else if (errorMessage) {
@@ -24,5 +46,11 @@
         </li>
       }
     </ul>
+
+    <div class="pagination">
+      <button type="button" class="secondary" [disabled]="page === 0 || loading" (click)="previousPage()">Previous</button>
+      <span>Page {{ page + 1 }} / {{ totalPages }} · {{ totalCount }} tasks</span>
+      <button type="button" class="secondary" [disabled]="loading || page + 1 >= totalPages" (click)="nextPage()">Next</button>
+    </div>
   }
 </section>
