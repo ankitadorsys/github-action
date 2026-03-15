@@ -1,11 +1,14 @@
 import { HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
-
-import { AuthService } from './auth.service';
+import { OAuthService } from 'angular-oauth2-oidc';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  const authService = inject(AuthService);
-  const token = authService.getAccessToken();
+  if (!req.url.includes('/api/')) {
+    return next(req);
+  }
+
+  const oauthService = inject(OAuthService);
+  const token = oauthService.getAccessToken();
 
   if (!token) {
     return next(req);
